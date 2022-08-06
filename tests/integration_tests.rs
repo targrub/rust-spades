@@ -18,8 +18,7 @@ fn main() {
          500);
 
     g.play(GameTransition::Start);
-    println!("{:#?}", g);
-    while *g.get_state() != State::Completed {
+    while g.get_state() != State::GameCompleted {
         //println!("{:#?},", g.scoring.team_a.bets);
         let mut stdin = io::stdin();
         let input = &mut String::new();
@@ -28,7 +27,7 @@ fn main() {
 
         //println!("{}, {}", g.game_state.round, g.game_state.trick);
 
-        if let State::Trick(_playerindex) = *g.get_state() {
+        if let State::Trick(_playerindex) = g.get_state() {
             assert!(g.get_current_hand().is_ok());
             let mut hand = g.get_current_hand().ok().unwrap().clone();
             
@@ -56,7 +55,7 @@ fn main() {
         //stdin.read_line(input);
  
     }
-    assert_eq!(*g.get_state(), State::Completed);
+    assert_eq!(g.get_state(), State::GameCompleted);
     //println!("{:#?}", g);
 }
 
