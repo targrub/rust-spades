@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
@@ -7,78 +8,72 @@ pub enum TransitionSuccess {
     Trick,
     PlayCard,
     GameOver,
-    Start,
+    Start
 }
 
 #[derive(Debug, PartialEq)]
-pub enum SpadesError {
+pub enum GetError {
     InvalidUuid,
     GameNotStarted,
     GameCompleted,
     GameNotCompleted,
-    Unknown,
+    Unknown
 }
 
-impl fmt::Display for SpadesError {
+impl fmt::Display for GetError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            SpadesError::InvalidUuid => {
-                write!(f, "Error: Attempted to retrieve by an invalid Uuid")
-            }
-            SpadesError::GameNotStarted => {
-                write!(f, "Error: Game not started yet.")
-            }
-            SpadesError::GameCompleted => {
-                write!(f, "Error: Game is completed.")
-            }
-            SpadesError::GameNotCompleted => {
-                write!(f, "Error: Game is still ongoing.")
-            }
-            SpadesError::Unknown => {
-                write!(f, "Error: Unknown get error occurred.")
-            }
+            GetError::InvalidUuid => {
+                write!(f, "Error: Attempted to retrieve by an invalid Uuid")},
+            GetError::GameNotStarted => {
+                write!(f, "Error: Game not started yet.")},
+            GetError::GameCompleted => {
+                write!(f, "Error: Game is completed.")},
+            GetError::GameNotCompleted => {
+                write!(f, "Error: Game is still ongoing.")},
+            GetError::Unknown => {
+                write!(f, "Error: Unknown get error occurred.")},
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum TransitionError {
-    GameAlreadyStarted,
-    GameNotStarted,
-    BetNotInBettingStage,
+    AlreadyStarted,
+    NotStarted,
     CardInBettingStage,
-    CardInCompletedGame,
+    BetInTrickStage,
+    CompletedGame,
     CardNotInHand,
-    CardIncorrectSuit,
+    CardIncorrectSuit
 }
 
 impl fmt::Display for TransitionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            TransitionError::GameAlreadyStarted => {
-                write!(f, "attempted to start a game that is already started")
-            }
-            TransitionError::GameNotStarted => {
-                write!(f, "attempted to play a game that has not yet started")
-            }
-            TransitionError::BetNotInBettingStage => {
-                write!(
-                    f,
-                    "attempted to place a bet while game is not in betting stage"
-                )
-            }
+            TransitionError::AlreadyStarted => {
+                write!(f, "Error: Attempted to start a game already started.")},
+            TransitionError::NotStarted => {
+                write!(f, "Error: Attempted to play a game not started yet.")},
             TransitionError::CardInBettingStage => {
-                write!(f, "attempted to play a card while game is in betting stage")
-            }
-            TransitionError::CardInCompletedGame => {
-                write!(f, "attempted to play a card while game is completed")
-            }
+                write!(f, "Error: Attempted to play a card while game is in betting stage.")},
+            TransitionError::BetInTrickStage => {
+                write!(f, "Error: Attempted to place a bet while game is in not stage.")},
+            TransitionError::CompletedGame => {
+                write!(f, "Error: Attempted to play a completed game.")},
             TransitionError::CardNotInHand => {
-                write!(f, "attempted to play a card not in hand")
-            }
+                write!(f, "Error: Attempted to play a card not in hand.")},
             TransitionError::CardIncorrectSuit => {
-                write!(f, "attempted to play a card of the wrong suit")
-            }
+                write!(f, "Error: Attempted to play a of the wrong suit.")},
         }
+    }
+}
+
+impl Error for TransitionError {
+    fn description(&self) -> &str {
+        "A transition error occured."
+    }
+    fn cause(&self) -> Option<&Error> {
+        Some(self)
     }
 }

@@ -1,10 +1,10 @@
 extern crate rand;
 
 use self::rand::{thread_rng, Rng};
-use std::cmp::Ordering;
 use std::fmt;
+use std::cmp::Ordering;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Suit {
     Blank = 0,
     Club = 1,
@@ -13,7 +13,7 @@ pub enum Suit {
     Spade = 4,
 }
 
-impl fmt::Display for Suit {
+impl fmt::Debug for Suit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Suit::Blank => write!(f, " "),
@@ -24,7 +24,7 @@ impl fmt::Display for Suit {
         }
     }
 }
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Rank {
     Blank = 0,
     Two = 2,
@@ -39,9 +39,9 @@ pub enum Rank {
     Jack = 11,
     Queen = 12,
     King = 13,
-    Ace = 14,
+    Ace = 14
 }
-impl fmt::Display for Rank {
+impl fmt::Debug for Rank {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Rank::Blank => write!(f, " "),
@@ -63,57 +63,59 @@ impl fmt::Display for Rank {
 }
 
 /// Intuitive card struct. Comparisons are made according to alphabetical order, ascending.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Card {
     pub suit: Suit,
-    pub rank: Rank,
+    pub rank: Rank
 }
 
-impl fmt::Display for Card {
+impl fmt::Debug for Card {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?} {:?}", self.suit, self.rank)
+        write!(f, "{:?} {:?}",self.suit , self.rank)
     }
 }
 
 impl Ord for Card {
     fn cmp(&self, other: &Card) -> Ordering {
-        ((self.suit as u64) * 15 + (self.rank as u64))
-            .cmp(&(((other.suit as u64) * 15) + (other.rank as u64)))
+        ((self.suit as u64) * 15 + (self.rank as u64)).cmp(&(((other.suit as u64)* 15) + (other.rank as u64)))
     }
 }
 
 impl PartialOrd for Card {
     fn partial_cmp(&self, other: &Card) -> Option<Ordering> {
-        Some(
-            ((self.suit as u64) * 15 + (self.rank as u64))
-                .cmp(&(((other.suit as u64) * 15) + (other.rank as u64))),
-        )
+        Some(((self.suit as u64) * 15 + (self.rank as u64)).cmp(&(((other.suit as u64)* 15) + (other.rank as u64))))
     }
 }
 
+
+
+
 /// Given four cards and a starting card, returns the winner of a trick.
-///
-/// The rules used to determine the winner of a trick are as follows:
+/// 
+/// The rules used to determine the winner of a trick are as follows: 
 /// * Spades trump all other suits
 /// * The suit the first player (given by index) plays sets the suit of the trick
 /// * The highest ranking spades card or card of suit of first player's card wins the trick.
-pub fn get_trick_winner(leading_player_index: usize, others: &[Card; 4]) -> usize {
-    let mut winning_index = leading_player_index;
-    let mut best_card = &others[leading_player_index];
+pub fn get_trick_winner(index: usize, others: &[Card ; 4]) -> usize {
+    let mut winning_index = index;
+    let mut max_card = &others[index];
 
-    for (i, other) in others.iter().enumerate() {
-        if other.suit == best_card.suit {
-            if other.rank as u8 > best_card.rank as u8 {
-                best_card = other;
+    for i in 0..4 {
+        let other = &others[i];
+        if other.suit == max_card.suit {
+            if other.rank as u8  > max_card.rank as u8 {
+                max_card = &other;
                 winning_index = i;
             }
         } else if other.suit == Suit::Spade {
-            best_card = other;
+            max_card = &other;
             winning_index = i;
         }
     }
-    winning_index
+    return winning_index;
 }
+
+
 
 /// Returns a shuffled deck of [`deck::Card`](struct.Card.html)'s, with 52 elements.
 pub fn new_deck() -> Vec<Card> {
@@ -130,44 +132,38 @@ pub fn new_deck() -> Vec<Card> {
         Rank::Jack,
         Rank::Queen,
         Rank::King,
-        Rank::Ace,
+        Rank::Ace
     ];
-    let suits: Vec<Suit> = vec![Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
+    let suits: Vec<Suit> = vec![
+        Suit::Club,
+        Suit::Diamond,
+        Suit::Heart,
+        Suit::Spade,
+    ];
 
     let mut cards = Vec::new();
-    for suit in suits {
-        for rank in &ranks {
-            cards.push(Card { suit, rank: *rank });
+    for s in &suits {
+        for r in &ranks {
+            cards.push(Card {suit:s.clone(), rank:r.clone()});
         }
     }
     shuffle(&mut cards);
-    cards
+
+    return cards;
 }
 
 /// Returns an array of `Blank` suited and ranked cards.
 pub fn new_pot() -> [Card; 4] {
     [
-        Card {
-            suit: Suit::Blank,
-            rank: Rank::Blank,
-        },
-        Card {
-            suit: Suit::Blank,
-            rank: Rank::Blank,
-        },
-        Card {
-            suit: Suit::Blank,
-            rank: Rank::Blank,
-        },
-        Card {
-            suit: Suit::Blank,
-            rank: Rank::Blank,
-        },
+        Card { suit: Suit::Blank, rank: Rank::Blank}, 
+        Card { suit: Suit::Blank, rank: Rank::Blank},
+        Card { suit: Suit::Blank, rank: Rank::Blank},
+        Card { suit: Suit::Blank, rank: Rank::Blank}
     ]
 }
 
 /// Shuffles a `Vector` of cards in place, see [`rand::thread_rng::shuffle`](https://docs.rs/rand/0.5.4/rand/trait.Rng.html#method.shuffle).
-pub fn shuffle(cards: &mut [Card]) {
+pub fn shuffle(cards: &mut Vec<Card>) {
     let mut rng = thread_rng();
     rng.shuffle(cards);
 }
@@ -179,9 +175,11 @@ pub fn deal_four_players(cards: &mut Vec<Card>) -> Vec<Vec<Card>> {
     let mut hands = vec![vec![], vec![], vec![], vec![]];
 
     let mut i = 0;
-    while let Some(card) = cards.pop() {
-        hands[i].push(card);
+    while cards.len() > 0 {
+        &hands[i].push(cards.pop().unwrap());
         i = (i + 1) % 4;
     }
-    hands
+
+    return hands;
 }
+
