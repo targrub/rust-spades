@@ -3,7 +3,7 @@ extern crate spades;
 extern crate uuid;
 
 use rand::{thread_rng, Rng};
-use spades::{Game, GameTransition, State, TransitionError, TransitionSuccess};
+use spades::{Game, State};
 
 fn main() {
     for _ in 0..1000 {
@@ -25,71 +25,35 @@ fn main() {
 }
 
 fn play_game(g: &mut Game) {
-    match g.play(GameTransition::Start) {
-        Ok(_) => {
-            while g.get_state() != State::GameCompleted {
-                let mut rng = thread_rng();
-                if let State::Trick(playerindex) = g.get_state() {
-                    assert!(g.get_current_hand().is_ok());
-                    let hand = g.get_current_hand().unwrap().clone();
-
-                    loop {
-                        if let Some(random_card) = rng.choose(hand.as_slice()) {
-                            let state = g.get_state();
-                            match state {
-                                State::Trick(x) => {
-//                                    println!(
-//                                        "player {} plays {}{}",
-//                                        x, random_card.rank, random_card.suit
-//                                    );
-                                }
-                                _ => {
-                                    panic!("should be playing trick")
-                                }
-                            }
-                            match g.play(GameTransition::Card(*random_card)) {
-                                Ok(TransitionSuccess::PlayCard) => {
-                                    break;
-                                }
-                                Ok(TransitionSuccess::Trick) => {
-                                    //println!("trick over");
-                                    break;
-                                }
-                                Ok(TransitionSuccess::GameOver) => {
-                                    //println!("game over");
-                                    break;
-                                }
-                                Ok(_) => {
-                                    println!("unexpected result of card being played")
-                                }
-                                Err(TransitionError::CardIncorrectSuit) => {
-//                                    println!("player {} tried to play {}{}, but it was the incorrect suit", playerindex, random_card.rank, random_card.suit);
-                                    continue;
-                                } // randomly chosen card was wrong suit, choose another card
-                                Err(TransitionError::CardNotInHand) => {
-                                    panic!("chose card that wasn't in the hand");
-                                }
-                                Err(_) => {
-                                    panic!("internal logic error");
-                                }
-                            }
-                        } else {
-                            panic!("no valid card can be chosen");
-                        }
-                    }
-                } else {
-                    match g.play(GameTransition::Bet(3)) {
-                        Ok(_) => {}
-                        Err(_) => {
-                            panic!("internal logic error");
-                        }
-                    }
-                }
-            }
-            assert_eq!(g.get_state(), State::GameCompleted);
+  let mut rng = thread_rng();
+  loop {
+    match g.get_state() {
+      State::GameNotStarted => {
+        g.start_game();
+      },
+      State::Betting(_player_index) => {
+        if g.place_bet(3).is_err() {
+          panic!("internal logic error");
         }
-        Err(_) => {
-            panic!("unable to start game");
+      },
+      State::Trick(_player_index) => {
+        let hand = g.get_current_hand().unwrap().clone();
+        loop {
+          if let Some(random_card) = rng.choose(hand.as_slice()) {
+            // println!("player {} plays {}{}", playerindex, random_card.rank, random_card.suit);
+            if g.play_card(*random_card).is_ok() {
+              break;
+            } else {
+              // we're assuming the error was SpadesError::CardIncorrectSuit
+              // println!("player {} tried to play {}{}, but it was the incorrect suit", playerindex, random_card.rank, random_card.suit);
+              continue;
+            } // randomly chosen card was wrong suit, choose another card
+          } else {
+            panic!("no valid card can be chosen");
+          }
         }
+      },
+      State::GameCompleted => { return; }
     }
+  }
 }

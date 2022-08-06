@@ -1,6 +1,49 @@
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
+pub enum SpadesError {
+    InvalidUuid,
+    GameNotStarted,
+    GameCompleted,
+    GameNotCompleted,
+    CardIncorrectSuit,
+    CardNotInHand,
+    ImproperGameStage,
+    InternalError,  // error within library
+}
+
+impl fmt::Display for SpadesError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            SpadesError::InvalidUuid => {
+                write!(f, "invalid Uuid")
+            }
+            SpadesError::GameNotStarted => {
+                write!(f, "game not started")
+            }
+            SpadesError::GameCompleted => {
+                write!(f, "game is complete")
+            }
+            SpadesError::GameNotCompleted => {
+                write!(f, "game is not complete")
+            }
+            SpadesError::CardIncorrectSuit => {
+                write!(f, "card of incorrect suit")
+            }
+            SpadesError::CardNotInHand => {
+                write!(f, "card not in hand")
+            }
+            SpadesError::ImproperGameStage => {
+                write!(f, "improper stage of game to take that action")
+            }
+            SpadesError::InternalError => {
+                write!(f, "spades crate internal error")
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum TransitionSuccess {
     Bet,
     BetComplete,
@@ -11,40 +54,10 @@ pub enum TransitionSuccess {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum SpadesError {
-    InvalidUuid,
-    GameNotStarted,
-    GameCompleted,
-    GameNotCompleted,
-    Unknown,
-}
-
-impl fmt::Display for SpadesError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            SpadesError::InvalidUuid => {
-                write!(f, "Error: Attempted to retrieve by an invalid Uuid")
-            }
-            SpadesError::GameNotStarted => {
-                write!(f, "Error: Game not started yet.")
-            }
-            SpadesError::GameCompleted => {
-                write!(f, "Error: Game is completed.")
-            }
-            SpadesError::GameNotCompleted => {
-                write!(f, "Error: Game is still ongoing.")
-            }
-            SpadesError::Unknown => {
-                write!(f, "Error: Unknown get error occurred.")
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
 pub enum TransitionError {
     GameAlreadyStarted,
     GameNotStarted,
+    BetInCompletedGame,
     BetNotInBettingStage,
     CardInBettingStage,
     CardInCompletedGame,
@@ -60,6 +73,9 @@ impl fmt::Display for TransitionError {
             }
             TransitionError::GameNotStarted => {
                 write!(f, "attempted to play a game that has not yet started")
+            }
+            TransitionError::BetInCompletedGame => {
+                write!(f, "attempted to make bet while game is completed")
             }
             TransitionError::BetNotInBettingStage => {
                 write!(

@@ -4,7 +4,7 @@ extern crate rand;
 extern crate uuid;
 
 use std::{io};
-use spades::{Game, GameTransition, State, Card, Suit};
+use spades::{Game, State, Card, Suit};
 use rand::{thread_rng};
 
 #[test]
@@ -17,7 +17,7 @@ fn main() {
          uuid::Uuid::new_v4()], 
          500);
 
-    g.play(GameTransition::Start);
+    g.start_game();
     while g.get_state() != State::GameCompleted {
         //println!("{:#?},", g.scoring.team_a.bets);
         let mut stdin = io::stdin();
@@ -44,10 +44,10 @@ fn main() {
 
             let x = get_valid_card_index(*g.get_leading_suit().unwrap(), &hand);
 
-            g.play(GameTransition::Card(hand[x].clone()));
+            g.play_card(hand[x].clone());
            
         } else {
-            g.play(GameTransition::Bet(3));
+            g.place_bet(3);
         }
 
         // println!("g.current_player: {}\n", g.current_player);

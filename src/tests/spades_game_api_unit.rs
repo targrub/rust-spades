@@ -3,7 +3,7 @@ extern crate uuid;
 use super::super::cards::{Card, Rank, Suit};
 use super::super::game_state::State;
 use super::super::result::{TransitionError, TransitionSuccess};
-use super::super::{Game, GameTransition};
+use super::super::{Game, GameAction};
 
 #[allow(unused)]
 #[test]
@@ -20,20 +20,20 @@ pub fn api_main_unit() {
     );
 
     assert_eq!(
-        g.play(GameTransition::Card(Card {
+        g.execute_game_action(GameAction::Card(Card {
             suit: Suit::Heart,
             rank: Rank::Five
         })),
         Err(TransitionError::GameNotStarted)
     );
     assert_eq!(
-        g.play(GameTransition::Bet(3)),
+        g.execute_game_action(GameAction::Bet(3)),
         Err(TransitionError::BetNotInBettingStage)
     );
 
-    assert_eq!(g.play(GameTransition::Start), Ok(TransitionSuccess::Start));
+    assert_eq!(g.execute_game_action(GameAction::Start), Ok(TransitionSuccess::Start));
     assert_eq!(
-        g.play(GameTransition::Start),
+        g.execute_game_action(GameAction::Start),
         Err(TransitionError::GameAlreadyStarted)
     );
 
@@ -261,99 +261,99 @@ pub fn api_main_unit() {
     assert_eq!(g.state, State::Betting(0));
 
     assert_eq!(
-        g.play(GameTransition::Card(Card {
+        g.execute_game_action(GameAction::Card(Card {
             suit: Suit::Heart,
             rank: Rank::Five
         })),
         Err(TransitionError::CardInBettingStage)
     );
     assert_eq!(
-        g.play(GameTransition::Start),
+        g.execute_game_action(GameAction::Start),
         Err(TransitionError::GameAlreadyStarted)
     );
-    assert_eq!(g.play(GameTransition::Bet(3)), Ok(TransitionSuccess::Bet));
+    assert_eq!(g.execute_game_action(GameAction::Bet(3)), Ok(TransitionSuccess::Bet));
 
     assert_eq!(
-        g.play(GameTransition::Card(Card {
+        g.execute_game_action(GameAction::Card(Card {
             suit: Suit::Heart,
             rank: Rank::Five
         })),
         Err(TransitionError::CardInBettingStage)
     );
-    assert_eq!(g.play(GameTransition::Bet(3)), Ok(TransitionSuccess::Bet));
+    assert_eq!(g.execute_game_action(GameAction::Bet(3)), Ok(TransitionSuccess::Bet));
 
     assert_eq!(
-        g.play(GameTransition::Card(Card {
+        g.execute_game_action(GameAction::Card(Card {
             suit: Suit::Heart,
             rank: Rank::Five
         })),
         Err(TransitionError::CardInBettingStage)
     );
-    assert_eq!(g.play(GameTransition::Bet(3)), Ok(TransitionSuccess::Bet));
+    assert_eq!(g.execute_game_action(GameAction::Bet(3)), Ok(TransitionSuccess::Bet));
 
     assert_eq!(
-        g.play(GameTransition::Card(Card {
+        g.execute_game_action(GameAction::Card(Card {
             suit: Suit::Heart,
             rank: Rank::Five
         })),
         Err(TransitionError::CardInBettingStage)
     );
     assert_eq!(
-        g.play(GameTransition::Bet(3)),
+        g.execute_game_action(GameAction::Bet(3)),
         Ok(TransitionSuccess::BetComplete)
     );
 
     let mut trick_test_closure =
         |trick_number: usize, played_cards: &[Card; 4], team_a_won: usize| {
             assert_eq!(
-                g.play(GameTransition::Card(played_cards[0].clone())),
+                g.execute_game_action(GameAction::Card(played_cards[0].clone())),
                 Ok(TransitionSuccess::PlayCard)
             );
             assert_eq!(
-                g.play(GameTransition::Start),
+                g.execute_game_action(GameAction::Start),
                 Err(TransitionError::GameAlreadyStarted)
             );
             assert_eq!(
-                g.play(GameTransition::Bet(3)),
+                g.execute_game_action(GameAction::Bet(3)),
                 Err(TransitionError::BetNotInBettingStage)
             );
 
             assert_eq!(
-                g.play(GameTransition::Card(played_cards[1].clone())),
+                g.execute_game_action(GameAction::Card(played_cards[1].clone())),
                 Ok(TransitionSuccess::PlayCard)
             );
             assert_eq!(
-                g.play(GameTransition::Start),
+                g.execute_game_action(GameAction::Start),
                 Err(TransitionError::GameAlreadyStarted)
             );
             assert_eq!(
-                g.play(GameTransition::Bet(3)),
+                g.execute_game_action(GameAction::Bet(3)),
                 Err(TransitionError::BetNotInBettingStage)
             );
 
             assert_eq!(
-                g.play(GameTransition::Card(played_cards[2].clone())),
+                g.execute_game_action(GameAction::Card(played_cards[2].clone())),
                 Ok(TransitionSuccess::PlayCard)
             );
             assert_eq!(
-                g.play(GameTransition::Start),
+                g.execute_game_action(GameAction::Start),
                 Err(TransitionError::GameAlreadyStarted)
             );
             assert_eq!(
-                g.play(GameTransition::Bet(3)),
+                g.execute_game_action(GameAction::Bet(3)),
                 Err(TransitionError::BetNotInBettingStage)
             );
 
             assert_eq!(
-                g.play(GameTransition::Card(played_cards[3].clone())),
+                g.execute_game_action(GameAction::Card(played_cards[3].clone())),
                 Ok(TransitionSuccess::Trick)
             );
             assert_eq!(
-                g.play(GameTransition::Start),
+                g.execute_game_action(GameAction::Start),
                 Err(TransitionError::GameAlreadyStarted)
             );
             assert_eq!(
-                g.play(GameTransition::Bet(3)),
+                g.execute_game_action(GameAction::Bet(3)),
                 Err(TransitionError::BetNotInBettingStage)
             );
 

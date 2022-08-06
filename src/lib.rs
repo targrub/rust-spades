@@ -6,7 +6,7 @@
 //! extern crate spades;
 //!
 //! use std::{io};
-//! use spades::{Game, GameTransition, State};
+//! use spades::{Game, GameAction, State};
 //! use rand::{thread_rng, Rng};
 //!
 //! let mut g = Game::new(uuid::Uuid::new_v4(),
@@ -17,7 +17,7 @@
 //!     500);
 //!
 //!
-//! g.play(GameTransition::Start);
+//! g.start_game();
 //!
 //! while g.get_state() != State::GameCompleted {
 //!     let mut stdin = io::stdin();
@@ -29,9 +29,9 @@
 //!
 //!         let random_card = rng.choose(hand.as_slice()).unwrap();
 //!         
-//!         g.play(GameTransition::Card(random_card.clone()));
+//!         g.play_card(random_card.clone());
 //!     } else {
-//!         g.play(GameTransition::Bet(3));
+//!         g.place_bet(3);
 //!     }
 //! }
 //! assert_eq!(g.get_state(), State::GameCompleted);
@@ -53,7 +53,7 @@ pub use result::*;
 use uuid::Uuid;
 
 /// The primary way to interface with a spades game. Used as an argument to [Game::play](struct.Game.html#method.play).
-pub enum GameTransition {
+pub enum GameAction {
     Bet(i32),
     Card(Card),
     Start,
@@ -152,7 +152,7 @@ impl Game {
             (State::Betting(_), 1) | (State::Trick(_), 1) => Ok(&self.player_b.id),
             (State::Betting(_), 2) | (State::Trick(_), 2) => Ok(&self.player_c.id),
             (State::Betting(_), 3) | (State::Trick(_), 3) => Ok(&self.player_d.id),
-            _ => Err(SpadesError::Unknown),
+            _ => Err(SpadesError::InternalError),
         }
     }
 
@@ -182,7 +182,7 @@ impl Game {
             (State::Betting(_), 1) | (State::Trick(_), 1) => Ok(&self.player_b.hand),
             (State::Betting(_), 2) | (State::Trick(_), 2) => Ok(&self.player_c.hand),
             (State::Betting(_), 3) | (State::Trick(_), 3) => Ok(&self.player_d.hand),
-            _ => Err(SpadesError::Unknown),
+            _ => Err(SpadesError::InternalError),
         }
     }
 
@@ -191,7 +191,7 @@ impl Game {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             State::GameCompleted => Err(SpadesError::GameCompleted),
             State::Trick(_) => Ok(&self.leading_suit),
-            _ => Err(SpadesError::Unknown),
+            _ => Err(SpadesError::InternalError),
         }
     }
 
@@ -223,14 +223,45 @@ impl Game {
         
     //}
 
-    /// The primary function used to progress the game state. The first `GameTransition` argument must always be
-    /// [`GameTransition::Start`](enum.GameTransition.html#variant.Start). The stages and player rotations are managed
-    /// internally. The order of `GameTransition` arguments should be:
-    ///
-    /// Start -> Bet * 4 -> Card * 13 -> Bet * 4 -> Card * 13 -> Bet * 4 -> ...
-    pub fn play(&mut self, entry: GameTransition) -> Result<TransitionSuccess, TransitionError> {
+    pub fn start_game(&mut self) {
+        match self.execute_game_action(GameAction::Start) {
+            Ok(TransitionSuccess::Start) => {/* started game successfully */},
+            Ok(_) => {panic!("unexpected action");},
+            Err(_) => {panic!("error");},
+        }
+    }
+
+    pub fn place_bet(&mut self, amount: i32) -> Result<(), SpadesError> {
+        match self.execute_game_action(GameAction::Bet(amount)) {
+            Ok(TransitionSuccess::Bet) => {/* made bet successfully */Ok(())},
+            Ok(TransitionSuccess::BetComplete) => {/* last bet was made successfully */Ok(())},
+            Err(TransitionError::GameAlreadyStarted) => {Err(SpadesError::ImproperGameStage)},
+            Err(TransitionError::BetInCompletedGame) => {Err(SpadesError::GameCompleted)},
+            Err(TransitionError::BetNotInBettingStage) => {Err(SpadesError::ImproperGameStage)},
+            _ => {Err(SpadesError::InternalError)},
+        }
+    }
+
+    pub fn play_card(&mut self, card_played: Card) -> Result<(), SpadesError> {
+        match self.execute_game_action(GameAction::Card(card_played)) {
+            Ok(TransitionSuccess::PlayCard) => {/* card played successfully */ Ok(())},
+            Ok(TransitionSuccess::Trick) => {/* card played successfully; trick now over */Ok(())},
+            Ok(TransitionSuccess::GameOver) => { /* card played successfully; game now over */Ok(())}
+            Err(TransitionError::CardIncorrectSuit) => {Err(SpadesError::CardIncorrectSuit)},
+            Err(TransitionError::CardNotInHand) => {Err(SpadesError::CardNotInHand)},
+            Err(TransitionError::CardInBettingStage) => {Err(SpadesError::ImproperGameStage)},
+            Err(TransitionError::CardInCompletedGame) => {Err(SpadesError::GameCompleted)},
+            _ => {Err(SpadesError::InternalError)},
+        }
+    }
+
+    /// The primary function used to progress the game state.
+    /// The stages and player rotations are managed internally.
+    /// The order of `GameAction` arguments should be:
+    /// Start -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
+    fn execute_game_action(&mut self, entry: GameAction) -> Result<TransitionSuccess, TransitionError> {
         match entry {
-            GameTransition::Bet(bet) => match self.state {
+            GameAction::Bet(bet) => match self.state {
                 State::GameNotStarted | State::Trick(_) | State::GameCompleted => {
                     Err(TransitionError::BetNotInBettingStage)
                 }
@@ -249,7 +280,7 @@ impl Game {
                     Ok(TransitionSuccess::Bet)
                 }
             },
-            GameTransition::Card(card) => {
+            GameAction::Card(card) => {
                 match self.state {
                     State::GameNotStarted => Err(TransitionError::GameNotStarted),
                     State::GameCompleted => Err(TransitionError::CardInCompletedGame),
@@ -311,7 +342,7 @@ impl Game {
                     }
                 }
             }
-            GameTransition::Start => {
+            GameAction::Start => {
                 if self.state != State::GameNotStarted {
                     return Err(TransitionError::GameAlreadyStarted);
                 }
