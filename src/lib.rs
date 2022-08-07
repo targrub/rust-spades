@@ -63,7 +63,7 @@ enum GameAction {
     Start,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Player {
     id: Uuid,
     hand: Vec<Card>,
@@ -76,7 +76,7 @@ impl Player {
 }
 
 /// Primary game state. Internally manages player rotation, scoring, and cards.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Game {
     id: Uuid,
     state: State,

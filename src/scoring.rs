@@ -1,19 +1,26 @@
+use std::fmt;
 use cards::{get_trick_winner, Card};
 
 /// Used as an argument to [Game::place_bet](struct.Game.html#method.place_bet).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Bet {
     Amount(u8),
     Nil,
     BlindNil,
 }
 
-#[derive(Debug)]
+impl fmt::Display for Bet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct GameConfig {
     max_points: i32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct PlayerState {
     won_trick: [bool; 13],
 }
@@ -26,13 +33,19 @@ impl PlayerState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TeamState {
     tricks: u8,
     game_bags: u8,
     cumulative_bags: u8,
     game_points: i32,
     cumulative_points: i32,
+}
+
+impl fmt::Display for TeamState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl TeamState {
@@ -139,7 +152,7 @@ impl TeamState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct Scoring {
     config: GameConfig,
     pub team: [TeamState; 2],

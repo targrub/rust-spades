@@ -6,7 +6,7 @@ use self::rand::{thread_rng, Rng};
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
 pub enum Suit {
     Blank = 0,
     Club = 1,
@@ -26,7 +26,7 @@ impl fmt::Display for Suit {
         }
     }
 }
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
 pub enum Rank {
     Blank = 0,
     Two = 2,
@@ -66,7 +66,7 @@ impl fmt::Display for Rank {
 }
 
 /// Intuitive card struct. Comparisons are made according to alphabetical order, ascending.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Card {
     pub suit: Suit,
     pub rank: Rank,
