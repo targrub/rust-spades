@@ -15,6 +15,16 @@ impl Default for Bet {
     }
 }
 
+impl From<u8> for Bet {
+    fn from(f: u8) -> Self {
+        if f == 0 {
+            Bet::Nil
+        } else {
+            Bet::Amount(f)
+        }
+    }
+}
+
 impl fmt::Display for Bet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)

@@ -27,8 +27,36 @@ impl fmt::Display for Suit {
         }
     }
 }
-#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
+
+impl From<u8> for Suit {
+    fn from(f: u8) -> Self {
+        match f {
+            0 => Suit::Blank,
+            1 => Suit::Club,
+            2 => Suit::Diamond,
+            3 => Suit::Heart,
+            4 => Suit::Spade,
+            _ => Suit::Blank,
+        }
+    }
+}
+
+#[test]
+fn test_from_u8_to_suit() {
+    let s: Suit = 3u8.into();
+    assert_eq!(Suit::Heart, s);
+    assert_eq!(Suit::Blank, 0u8.into());
+    assert_eq!(Suit::Club, 1u8.into());
+    assert_eq!(Suit::Diamond, 2u8.into());
+    assert_eq!(Suit::Heart, 3u8.into());
+    assert_eq!(Suit::Spade, 4u8.into());
+    assert_eq!(Suit::Blank, 5u8.into());
+    assert_eq!(Suit::Blank, 14u8.into());
+}
+
+#[derive(Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
 pub enum Rank {
+    #[default]
     Blank = 0,
     Two = 2,
     Three = 3,
@@ -43,6 +71,39 @@ pub enum Rank {
     Queen = 12,
     King = 13,
     Ace = 14,
+}
+
+impl From<u8> for Rank {
+    fn from(u: u8) -> Self {
+        match u {
+            2 => Rank::Two,
+            3 => Rank::Three,
+            4 => Rank::Four,
+            5 => Rank::Five,
+            6 => Rank::Six,
+            7 => Rank::Seven,
+            8 => Rank::Eight,
+            9 => Rank::Nine,
+            10 => Rank::Ten,
+            11 => Rank::Jack,
+            12 => Rank::Queen,
+            13 => Rank::King,
+            14 => Rank::Ace,
+            _ => Rank::Blank,
+        }
+    }
+}
+
+#[test]
+fn test_from_u8_to_rank() {
+    let r: Rank = 3u8.into();
+    assert_eq!(Rank::Three, r);
+    assert_eq!(Rank::Ace, 14u8.into());
+    assert_eq!(Rank::Ten, 10u8.into());
+    assert_eq!(Rank::Two, 2u8.into());
+    assert_eq!(Rank::Blank, 0u8.into());
+    assert_eq!(Rank::Blank, 1u8.into());
+    assert_eq!(Rank::Blank, 15u8.into());
 }
 
 impl fmt::Display for Rank {
@@ -67,7 +128,7 @@ impl fmt::Display for Rank {
 }
 
 /// Intuitive card struct. Comparisons are made according to alphabetical order, ascending.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Card {
     pub suit: Suit,
     pub rank: Rank,
