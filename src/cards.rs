@@ -6,8 +6,9 @@ use self::rand::{thread_rng, Rng};
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
 
-#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
 pub enum Suit {
+    #[default]
     Blank = 0,
     Club = 1,
     Diamond = 2,

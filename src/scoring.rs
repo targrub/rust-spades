@@ -1,5 +1,5 @@
-use std::fmt;
 use cards::{get_trick_winner, Card};
+use std::fmt;
 
 /// Used as an argument to [Game::place_bet](struct.Game.html#method.place_bet).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -7,6 +7,12 @@ pub enum Bet {
     Amount(u8),
     Nil,
     BlindNil,
+}
+
+impl Default for Bet {
+    fn default() -> Self {
+        Bet::Amount(3)
+    }
 }
 
 impl fmt::Display for Bet {
@@ -20,7 +26,13 @@ struct GameConfig {
     max_points: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+impl Default for GameConfig {
+    fn default() -> Self {
+        GameConfig { max_points: 500 }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct PlayerState {
     won_trick: [bool; 13],
 }
@@ -33,7 +45,7 @@ impl PlayerState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TeamState {
     tricks: u8,
     game_bags: u8,
@@ -162,6 +174,21 @@ pub struct Scoring {
     is_over: bool,
     round: usize,
     trick: usize,
+}
+
+impl Default for Scoring {
+    fn default() -> Self {
+        Scoring {
+            team: [TeamState::default(), TeamState::default()],
+            in_betting_stage: true,
+            players: [PlayerState::default(); 4],
+            bets_placed: [Bet::Amount(0); 4],
+            is_over: false,
+            round: 0,
+            trick: 0,
+            config: GameConfig::default(),
+        }
+    }
 }
 
 impl Scoring {

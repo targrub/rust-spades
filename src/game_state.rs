@@ -7,8 +7,9 @@ use std::fmt::Display;
 /// respectively.
 ///
 /// **Example:** `State::Trick(2)` means the game is in the card playing stage, and two players have played their cards.
-#[derive(Debug, PartialEq, Clone, Copy, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, PartialEq, Clone, Copy, Eq, PartialOrd, Ord, Hash)]
 pub enum State {
+    #[default]
     GameNotStarted,
     Betting(usize),
     Trick(usize),
@@ -19,5 +20,4 @@ impl Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
-    
 }

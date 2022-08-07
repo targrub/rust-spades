@@ -15,7 +15,6 @@
 //!     uuid::Uuid::new_v4()],
 //!     500);
 //!
-//!
 //! g.start_game();
 //!
 //! while g.state() != State::GameCompleted {
@@ -63,7 +62,7 @@ enum GameAction {
     Start,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 struct Player {
     id: Uuid,
     hand: Vec<Card>,
@@ -89,6 +88,28 @@ pub struct Game {
     spades_broken: bool,
     //rule_blind_nil_allowed: bool,
     player: [Player; 4],
+}
+
+impl Default for Game {
+    fn default() -> Self {
+        Game {
+            id: Uuid::default(),
+            state: State::GameNotStarted,
+            scoring: scoring::Scoring::default(),
+            current_player_index: 0,
+            deck: cards::new_deck(),
+            leading_suit: Suit::Blank,
+            spades_broken: false,
+            hands_played: vec![new_pot()],
+            bets_placed: [Bet::Amount(0); 4],
+            player: [
+                Player::default(),
+                Player::default(),
+                Player::default(),
+                Player::default(),
+            ],
+        }
+    }
 }
 
 impl Game {
