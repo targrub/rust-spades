@@ -9,7 +9,7 @@ pub enum SpadesError {
     CardIncorrectSuit,
     CardNotInHand,
     ImproperGameStage,
-    InternalError,  // error within library
+    InternalError, // error within library
 }
 
 impl fmt::Display for SpadesError {
@@ -43,7 +43,7 @@ impl fmt::Display for SpadesError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum TransitionSuccess {
     Bet,
     BetComplete,
@@ -53,7 +53,7 @@ pub enum TransitionSuccess {
     Start,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum TransitionError {
     GameAlreadyStarted,
     GameNotStarted,

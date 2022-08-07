@@ -1,8 +1,10 @@
+#![allow(unused)]
+
 extern crate rand;
 
 use self::rand::{thread_rng, Rng};
 use std::cmp::Ordering;
-use std::fmt;
+use std::fmt::{self, Display};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Suit {
@@ -41,6 +43,7 @@ pub enum Rank {
     King = 13,
     Ace = 14,
 }
+
 impl fmt::Display for Rank {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -69,9 +72,15 @@ pub struct Card {
     pub rank: Rank,
 }
 
+impl Card {
+    fn new(suit: Suit, rank: Rank) -> Card {
+        Card { suit, rank }
+    }
+}
+
 impl fmt::Display for Card {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?} {:?}", self.suit, self.rank)
+        write!(f, "{:?} {:?}", self.rank, self.suit)
     }
 }
 
@@ -176,12 +185,187 @@ pub fn shuffle(cards: &mut [Card]) {
 pub fn deal_four_players(cards: &mut Vec<Card>) -> Vec<Vec<Card>> {
     assert_eq!(cards.len(), 52);
     shuffle(cards);
-    let mut hands = vec![vec![], vec![], vec![], vec![]];
+    let mut hands = [vec![], vec![], vec![], vec![]];
 
     let mut i = 0;
     while let Some(card) = cards.pop() {
         hands[i].push(card);
         i = (i + 1) % 4;
     }
-    hands
+    hands.to_vec()
+}
+
+#[cfg(test)]
+mod tests {
+
+    use cards::{
+        deal_four_players, get_trick_winner, new_deck, new_pot, shuffle, Card, Rank, Suit,
+    };
+    use std::fmt;
+
+    #[test]
+    fn shuffle_changes_cards() {
+        let ah = Card::new(Suit::Heart, Rank::Ace);
+        let ks = Card::new(Suit::Spade, Rank::King);
+        let qc = Card::new(Suit::Club, Rank::Queen);
+        let jd = Card::new(Suit::Diamond, Rank::Jack);
+        let c2d = Card::new(Suit::Diamond, Rank::Two);
+        let c3d = Card::new(Suit::Diamond, Rank::Three);
+        let blank = Card::new(Suit::Blank, Rank::Blank);
+        let mut cards = [ah, ks, qc, jd, c2d];
+        let the_copy = cards;
+        let the_clone = cards.clone();
+        assert_eq!(cards, the_copy);
+        assert_eq!(cards, the_clone);
+        shuffle(&mut cards);
+        assert!(cards.contains(&ah));
+        assert!(cards.contains(&ks));
+        assert!(cards.contains(&qc));
+        assert!(cards.contains(&jd));
+        assert!(cards.contains(&c2d));
+        assert!(!cards.contains(&c3d));
+        assert!(!cards.contains(&blank));
+        assert_ne!(cards, the_copy);
+        assert_ne!(cards, the_clone);
+    }
+
+    #[test]
+    fn card_to_string() {
+        let ah = Card::new(Suit::Heart, Rank::Ace);
+        let ks = Card::new(Suit::Spade, Rank::King);
+        let qc = Card::new(Suit::Club, Rank::Queen);
+        let jd = Card::new(Suit::Diamond, Rank::Jack);
+        let c2d = Card::new(Suit::Diamond, Rank::Two);
+        assert_eq!(ah.to_string(), "Ace Heart".to_string());
+        assert_eq!(ks.to_string(), "King Spade".to_string());
+        assert_eq!(qc.to_string(), "Queen Club".to_string());
+        assert_eq!(jd.to_string(), "Jack Diamond".to_string());
+        assert_eq!(c2d.to_string(), "Two Diamond".to_string());
+    }
+
+    #[test]
+    fn deal_4() {
+        let ah = Card {
+            suit: Suit::Heart,
+            rank: Rank::Ace,
+        };
+        let ranks = [
+            Rank::Two,
+            Rank::Three,
+            Rank::Four,
+            Rank::Five,
+            Rank::Six,
+            Rank::Seven,
+            Rank::Eight,
+            Rank::Nine,
+            Rank::Ten,
+            Rank::Jack,
+            Rank::Queen,
+            Rank::King,
+            Rank::Ace,
+        ];
+        let suits = [Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
+        let mut deck = Vec::new();
+        for r in ranks {
+            for s in suits {
+                deck.push(Card::new(s.into(), r.into()));
+            }
+        }
+        let hands = deal_four_players(&mut deck);
+        assert_eq!(13, hands[0].len());
+        assert_eq!(13, hands[1].len());
+        assert_eq!(13, hands[2].len());
+        assert_eq!(13, hands[3].len());
+        assert_ne!(hands[0], hands[1]);
+        assert_ne!(hands[0][0], hands[1][0]);
+        assert!(
+            hands[0].contains(&ah)
+                || hands[1].contains(&ah)
+                || hands[2].contains(&ah)
+                || hands[3].contains(&ah)
+        );
+    }
+
+    #[test]
+    fn new_deck_test() {
+        let ah = Card::new(Suit::Heart, Rank::Ace);
+        let ks = Card::new(Suit::Spade, Rank::King);
+        let qc = Card::new(Suit::Club, Rank::Queen);
+        let jd = Card::new(Suit::Diamond, Rank::Jack);
+        let c2d = Card::new(Suit::Diamond, Rank::Two);
+        let c3d = Card::new(Suit::Diamond, Rank::Three);
+        let blank = Card::new(Suit::Blank, Rank::Blank);
+        let blank_spade = Card::new(Suit::Spade, Rank::Blank);
+        let blank_3 = Card::new(Suit::Blank, Rank::Three);
+
+        let deck = new_deck();
+        assert!(deck.contains(&ah));
+        assert!(deck.contains(&ks));
+        assert!(deck.contains(&qc));
+        assert!(deck.contains(&jd));
+        assert!(deck.contains(&c2d));
+        assert!(deck.contains(&c3d));
+        assert!(!deck.contains(&blank));
+        assert!(!deck.contains(&blank_spade));
+        assert!(!deck.contains(&blank_3));
+    }
+
+    #[test]
+    fn new_pot_test() {
+        let c3d = Card::new(Suit::Diamond, Rank::Three);
+        let blank = Card::new(Suit::Blank, Rank::Blank);
+        let blank_spade = Card::new(Suit::Spade, Rank::Blank);
+        let blank_3 = Card::new(Suit::Blank, Rank::Three);
+
+        let cards = new_pot();
+        assert!(!cards.contains(&c3d));
+        assert!(cards.contains(&blank));
+        assert!(!cards.contains(&blank_spade));
+        assert!(!cards.contains(&blank_3));
+        assert_eq!(blank, cards[0]);
+        assert_eq!(blank, cards[1]);
+        assert_eq!(blank, cards[2]);
+        assert_eq!(blank, cards[3]);
+    }
+
+    #[test]
+    fn test_winner_of_tricks() {
+        let ah = Card::new(Suit::Heart, Rank::Ace);
+        let ks = Card::new(Suit::Spade, Rank::King);
+        let qc = Card::new(Suit::Club, Rank::Queen);
+        let jd = Card::new(Suit::Diamond, Rank::Jack);
+        let c2d = Card::new(Suit::Diamond, Rank::Two);
+        let c3d = Card::new(Suit::Diamond, Rank::Three);
+        let c3s = Card::new(Suit::Spade, Rank::Three);
+
+        let hand1 = [c2d, c3d, jd, qc];
+        assert_eq!(2, get_trick_winner(0, &hand1));
+        assert_eq!(2, get_trick_winner(1, &hand1));
+        assert_eq!(2, get_trick_winner(2, &hand1));
+        assert_eq!(3, get_trick_winner(3, &hand1));
+
+        let hand2 = [ah, ks, qc, jd];
+        assert_eq!(1, get_trick_winner(0, &hand2));
+        assert_eq!(1, get_trick_winner(1, &hand2));
+        assert_eq!(1, get_trick_winner(2, &hand2));
+        assert_eq!(1, get_trick_winner(3, &hand2));
+
+        let hand3 = [ah, c3d, qc, jd];
+        assert_eq!(0, get_trick_winner(0, &hand3));
+        assert_eq!(3, get_trick_winner(1, &hand3));
+        assert_eq!(2, get_trick_winner(2, &hand3));
+        assert_eq!(3, get_trick_winner(3, &hand3));
+
+        let hand4 = [ah, c3s, qc, jd];
+        assert_eq!(1, get_trick_winner(0, &hand4));
+        assert_eq!(1, get_trick_winner(1, &hand4));
+        assert_eq!(1, get_trick_winner(2, &hand4));
+        assert_eq!(1, get_trick_winner(3, &hand4));
+
+        let hand5 = [ks, c3s, qc, jd];
+        assert_eq!(0, get_trick_winner(0, &hand5));
+        assert_eq!(0, get_trick_winner(1, &hand5));
+        assert_eq!(0, get_trick_winner(2, &hand5));
+        assert_eq!(0, get_trick_winner(3, &hand5));
+    }
 }

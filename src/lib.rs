@@ -5,8 +5,7 @@
 //! extern crate uuid;
 //! extern crate spades;
 //!
-//! use std::{io};
-//! use spades::{Game, GameAction, State};
+//! use spades::{Game, State, Bet};
 //! use rand::{thread_rng, Rng};
 //!
 //! let mut g = Game::new(uuid::Uuid::new_v4(),
@@ -19,22 +18,22 @@
 //!
 //! g.start_game();
 //!
-//! while g.get_state() != State::GameCompleted {
-//!     let mut stdin = io::stdin();
-//!     let input = &mut String::new();
+//! while g.state() != State::GameCompleted {
 //!     let mut rng = thread_rng();
-//!     if let State::Trick(_playerindex) = g.get_state() {
-//!         assert!(g.get_current_hand().is_ok());
-//!         let hand = g.get_current_hand().ok().unwrap().clone();
+//!     if let State::Trick(_playerindex) = g.state() {
+//!         assert!(g.current_hand().is_ok());
+//!         let hand = g.current_hand().ok().unwrap().clone();
 //!
 //!         let random_card = rng.choose(hand.as_slice()).unwrap();
 //!         
 //!         g.play_card(random_card.clone());
 //!     } else {
-//!         g.place_bet(3);
+//!         g.place_bet(Bet::Amount(3));
 //!     }
 //! }
-//! assert_eq!(g.get_state(), State::GameCompleted);
+//! if g.is_over() {
+//!     println!("All rounds of the game are complete.  The winning score was ");
+//! }
 //! ```
 
 extern crate uuid;
@@ -47,14 +46,19 @@ mod scoring;
 #[cfg(test)]
 mod tests;
 
-pub use cards::*;
-pub use game_state::*;
-pub use result::*;
+pub use cards::{Card, Suit};
+pub use game_state::State;
+pub use result::SpadesError;
+pub use scoring::Bet;
+
 use uuid::Uuid;
 
-/// The primary way to interface with a spades game. Used as an argument to [Game::play](struct.Game.html#method.play).
-pub enum GameAction {
-    Bet(i32),
+use cards::new_pot;
+use result::{TransitionError, TransitionSuccess};
+use scoring::Scoring;
+
+enum GameAction {
+    Bet(Bet),
     Card(Card),
     Start,
 }
@@ -66,26 +70,25 @@ struct Player {
 }
 
 impl Player {
-    pub fn new(id: Uuid) -> Player {
+    fn new(id: Uuid) -> Player {
         Player { id, hand: vec![] }
     }
 }
 
 /// Primary game state. Internally manages player rotation, scoring, and cards.
+#[derive(Debug)]
 pub struct Game {
     id: Uuid,
     state: State,
-    scoring: scoring::Scoring,
+    scoring: Scoring,
     current_player_index: usize,
     deck: Vec<cards::Card>,
     hands_played: Vec<[cards::Card; 4]>,
-    bets_placed: Vec<[i32; 4]>,
-    /// TODO i32-> Bet (enum): Bet(u8), Nil, BlindNil  --> game rule set?  BlindNilAllowed(bool)
+    bets_placed: [Bet; 4],
     leading_suit: Suit,
-    player_a: Player,
-    player_b: Player,
-    player_c: Player,
-    player_d: Player,
+    spades_broken: bool,
+    //rule_blind_nil_allowed: bool,
+    player: [Player; 4],
 }
 
 impl Game {
@@ -95,98 +98,108 @@ impl Game {
             state: State::GameNotStarted,
             scoring: scoring::Scoring::new(max_points),
             hands_played: vec![new_pot()],
-            bets_placed: vec![[0; 4]],
+            bets_placed: [Bet::Amount(0); 4],
             deck: cards::new_deck(),
             current_player_index: 0,
             leading_suit: Suit::Blank,
-            player_a: Player::new(player_ids[0]),
-            player_b: Player::new(player_ids[1]),
-            player_c: Player::new(player_ids[2]),
-            player_d: Player::new(player_ids[3]),
+            spades_broken: false,
+            //rule_blind_nil_allowed: false,
+            player: [
+                Player::new(player_ids[0]),
+                Player::new(player_ids[1]),
+                Player::new(player_ids[2]),
+                Player::new(player_ids[3]),
+            ],
         }
     }
 
-    pub fn get_id(&self) -> &Uuid {
+    pub fn id(&self) -> &Uuid {
         &self.id
     }
 
     /// See [`State`](enum.State.html)
-    pub fn get_state(&self) -> State {
+    pub fn state(&self) -> State {
         self.state
     }
 
-    pub fn get_team_a_score(&self) -> Result<&i32, SpadesError> {
+    pub fn team_a_game_score(&self) -> Result<i32, SpadesError> {
         match (&self.state, self.current_player_index) {
             (State::GameNotStarted, _) => Err(SpadesError::GameNotStarted),
-            _ => Ok(&self.scoring.team_a.cumulative_points),
+            _ => Ok(self.scoring.team[0].game_points()),
         }
     }
 
-    pub fn get_team_b_score(&self) -> Result<&i32, SpadesError> {
+    pub fn team_b_game_score(&self) -> Result<i32, SpadesError> {
         match (&self.state, self.current_player_index) {
             (State::GameNotStarted, _) => Err(SpadesError::GameNotStarted),
-            _ => Ok(&self.scoring.team_b.cumulative_points),
+            _ => Ok(self.scoring.team[1].game_points()),
         }
     }
 
-    pub fn get_team_a_bags(&self) -> Result<&i32, SpadesError> {
+    pub fn team_a_tricks(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(&self.scoring.team_a.bags),
+            _ => Ok(self.scoring.team[0].tricks_won()),
         }
     }
 
-    pub fn get_team_b_bags(&self) -> Result<&i32, SpadesError> {
+    pub fn team_b_tricks(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(&self.scoring.team_b.bags),
+            _ => Ok(self.scoring.team[1].tricks_won()),
+        }
+    }
+
+    pub fn team_a_bags(&self) -> Result<u8, SpadesError> {
+        match self.state {
+            State::GameNotStarted => Err(SpadesError::GameNotStarted),
+            _ => Ok(self.scoring.team[0].game_bags()),
+        }
+    }
+
+    pub fn team_b_bags(&self) -> Result<u8, SpadesError> {
+        match self.state {
+            State::GameNotStarted => Err(SpadesError::GameNotStarted),
+            _ => Ok(self.scoring.team[1].game_bags()),
         }
     }
 
     /// Returns `SpadesError` when the current game is not in the Betting or Trick stages.
-    pub fn get_current_player_id(&self) -> Result<&Uuid, SpadesError> {
+    pub fn current_player_id(&self) -> Result<&Uuid, SpadesError> {
         match (&self.state, self.current_player_index) {
             (State::GameNotStarted, _) => Err(SpadesError::GameNotStarted),
             (State::GameCompleted, _) => Err(SpadesError::GameCompleted),
-            (State::Betting(_), 0) | (State::Trick(_), 0) => Ok(&self.player_a.id),
-            (State::Betting(_), 1) | (State::Trick(_), 1) => Ok(&self.player_b.id),
-            (State::Betting(_), 2) | (State::Trick(_), 2) => Ok(&self.player_c.id),
-            (State::Betting(_), 3) | (State::Trick(_), 3) => Ok(&self.player_d.id),
-            _ => Err(SpadesError::InternalError),
+            (State::Betting(_), p) | (State::Trick(_), p) => Ok(&self.player[p].id),
         }
     }
 
     /// Returns a `SpadesError::InvalidUuid` if the game does not contain a player with the given `Uuid`.
-    pub fn get_hand_by_player_id(&self, player_id: Uuid) -> Result<&Vec<Card>, SpadesError> {
-        if player_id == self.player_a.id {
-            return Ok(&self.player_a.hand);
+    pub fn hand_from_player_id(&self, player_id: Uuid) -> Result<&Vec<Card>, SpadesError> {
+        if player_id == self.player[0].id {
+            return Ok(&self.player[0].hand);
         }
-        if player_id == self.player_a.id {
-            return Ok(&self.player_a.hand);
+        if player_id == self.player[1].id {
+            return Ok(&self.player[1].hand);
         }
-        if player_id == self.player_a.id {
-            return Ok(&self.player_a.hand);
+        if player_id == self.player[2].id {
+            return Ok(&self.player[2].hand);
         }
-        if player_id == self.player_a.id {
-            return Ok(&self.player_a.hand);
+        if player_id == self.player[3].id {
+            return Ok(&self.player[3].hand);
         }
 
         Err(SpadesError::InvalidUuid)
     }
 
-    pub fn get_current_hand(&self) -> Result<&Vec<Card>, SpadesError> {
+    pub fn current_hand(&self) -> Result<&Vec<Card>, SpadesError> {
         match (&self.state, self.current_player_index) {
             (State::GameNotStarted, _) => Err(SpadesError::GameNotStarted),
             (State::GameCompleted, _) => Err(SpadesError::GameCompleted),
-            (State::Betting(_), 0) | (State::Trick(_), 0) => Ok(&self.player_a.hand),
-            (State::Betting(_), 1) | (State::Trick(_), 1) => Ok(&self.player_b.hand),
-            (State::Betting(_), 2) | (State::Trick(_), 2) => Ok(&self.player_c.hand),
-            (State::Betting(_), 3) | (State::Trick(_), 3) => Ok(&self.player_d.hand),
-            _ => Err(SpadesError::InternalError),
+            (State::Betting(_), p) | (State::Trick(_), p) => Ok(&self.player[p].hand),
         }
     }
 
-    pub fn get_leading_suit(&self) -> Result<&Suit, SpadesError> {
+    pub fn leading_suit(&self) -> Result<&Suit, SpadesError> {
         match &self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             State::GameCompleted => Err(SpadesError::GameCompleted),
@@ -196,7 +209,7 @@ impl Game {
     }
 
     /// Returns an array with (only if in the trick stage).
-    pub fn get_current_trick_cards(&self) -> Result<&[cards::Card; 4], SpadesError> {
+    pub fn current_trick_cards(&self) -> Result<&[cards::Card; 4], SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             State::GameCompleted => Err(SpadesError::GameCompleted),
@@ -205,53 +218,73 @@ impl Game {
         }
     }
 
-    pub fn get_winner_ids(&self) -> Result<(&Uuid, &Uuid), SpadesError> {
+    pub fn winner_ids(&self) -> Result<(&Uuid, &Uuid), SpadesError> {
         match self.state {
             State::GameCompleted => {
-                if self.scoring.team_a.cumulative_points <= self.scoring.team_b.cumulative_points {
-                    Ok((&self.player_a.id, &self.player_c.id))
+                if self.scoring.team[0].cumulative_points()
+                    <= self.scoring.team[1].cumulative_points()
+                {
+                    Ok((&self.player[0].id, &self.player[2].id))
                 } else {
-                    Ok((&self.player_b.id, &self.player_d.id))
+                    Ok((&self.player[1].id, &self.player[3].id))
                 }
             }
             _ => Err(SpadesError::GameNotCompleted),
         }
     }
 
-//    pub fn get_bets_placed(&self) -> Result<Vec<BetEnum>, SpadesError>
-  //  {
-        
-    //}
+    pub fn bets_placed(&self) -> Result<[Bet; 4], SpadesError> {
+        Ok(self.bets_placed)
+    }
 
     pub fn start_game(&mut self) {
         match self.execute_game_action(GameAction::Start) {
-            Ok(TransitionSuccess::Start) => {/* started game successfully */},
-            Ok(_) => {panic!("unexpected action");},
-            Err(_) => {panic!("error");},
+            Ok(TransitionSuccess::Start) => { /* started game successfully */ }
+            Ok(_) => {
+                panic!("unexpected action");
+            }
+            Err(_) => {
+                panic!("error");
+            }
         }
     }
 
-    pub fn place_bet(&mut self, amount: i32) -> Result<(), SpadesError> {
-        match self.execute_game_action(GameAction::Bet(amount)) {
-            Ok(TransitionSuccess::Bet) => {/* made bet successfully */Ok(())},
-            Ok(TransitionSuccess::BetComplete) => {/* last bet was made successfully */Ok(())},
-            Err(TransitionError::GameAlreadyStarted) => {Err(SpadesError::ImproperGameStage)},
-            Err(TransitionError::BetInCompletedGame) => {Err(SpadesError::GameCompleted)},
-            Err(TransitionError::BetNotInBettingStage) => {Err(SpadesError::ImproperGameStage)},
-            _ => {Err(SpadesError::InternalError)},
+    pub fn place_bet(&mut self, bet: Bet) -> Result<(), SpadesError> {
+        match self.execute_game_action(GameAction::Bet(bet)) {
+            Ok(TransitionSuccess::Bet) => {
+                /* made bet successfully */
+                Ok(())
+            }
+            Ok(TransitionSuccess::BetComplete) => {
+                /* last bet was made successfully */
+                Ok(())
+            }
+            Err(TransitionError::GameAlreadyStarted) => Err(SpadesError::ImproperGameStage),
+            Err(TransitionError::BetInCompletedGame) => Err(SpadesError::GameCompleted),
+            Err(TransitionError::BetNotInBettingStage) => Err(SpadesError::ImproperGameStage),
+            _ => Err(SpadesError::InternalError),
         }
     }
 
     pub fn play_card(&mut self, card_played: Card) -> Result<(), SpadesError> {
         match self.execute_game_action(GameAction::Card(card_played)) {
-            Ok(TransitionSuccess::PlayCard) => {/* card played successfully */ Ok(())},
-            Ok(TransitionSuccess::Trick) => {/* card played successfully; trick now over */Ok(())},
-            Ok(TransitionSuccess::GameOver) => { /* card played successfully; game now over */Ok(())}
-            Err(TransitionError::CardIncorrectSuit) => {Err(SpadesError::CardIncorrectSuit)},
-            Err(TransitionError::CardNotInHand) => {Err(SpadesError::CardNotInHand)},
-            Err(TransitionError::CardInBettingStage) => {Err(SpadesError::ImproperGameStage)},
-            Err(TransitionError::CardInCompletedGame) => {Err(SpadesError::GameCompleted)},
-            _ => {Err(SpadesError::InternalError)},
+            Ok(TransitionSuccess::PlayCard) => {
+                /* card played successfully */
+                Ok(())
+            }
+            Ok(TransitionSuccess::Trick) => {
+                /* card played successfully; trick now over */
+                Ok(())
+            }
+            Ok(TransitionSuccess::GameOver) => {
+                /* card played successfully; game now over */
+                Ok(())
+            }
+            Err(TransitionError::CardIncorrectSuit) => Err(SpadesError::CardIncorrectSuit),
+            Err(TransitionError::CardNotInHand) => Err(SpadesError::CardNotInHand),
+            Err(TransitionError::CardInBettingStage) => Err(SpadesError::ImproperGameStage),
+            Err(TransitionError::CardInCompletedGame) => Err(SpadesError::GameCompleted),
+            _ => Err(SpadesError::InternalError),
         }
     }
 
@@ -259,7 +292,10 @@ impl Game {
     /// The stages and player rotations are managed internally.
     /// The order of `GameAction` arguments should be:
     /// Start -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
-    fn execute_game_action(&mut self, entry: GameAction) -> Result<TransitionSuccess, TransitionError> {
+    fn execute_game_action(
+        &mut self,
+        entry: GameAction,
+    ) -> Result<TransitionSuccess, TransitionError> {
         match entry {
             GameAction::Bet(bet) => match self.state {
                 State::GameNotStarted | State::Trick(_) | State::GameCompleted => {
@@ -268,7 +304,7 @@ impl Game {
                 State::Betting(rotation_status) => {
                     self.scoring.add_bet(self.current_player_index, bet);
                     if rotation_status == 3 {
-                        self.scoring.bet();
+                        self.scoring.betting_over();
                         self.state = State::Trick((rotation_status + 1) % 4);
                         self.current_player_index = 0;
                         return Ok(TransitionSuccess::BetComplete);
@@ -287,14 +323,7 @@ impl Game {
                     State::Betting(_rotation_status) => Err(TransitionError::CardInBettingStage),
                     State::Trick(rotation_status) => {
                         {
-                            let player_hand = &mut match self.current_player_index {
-                                0 => &mut self.player_a,
-                                1 => &mut self.player_b,
-                                2 => &mut self.player_c,
-                                3 => &mut self.player_d,
-                                _ => &mut self.player_d,
-                            }
-                            .hand;
+                            let player_hand = &mut self.player[self.current_player_index].hand;
 
                             if !player_hand.contains(&card) {
                                 return Err(TransitionError::CardNotInHand);
@@ -302,11 +331,24 @@ impl Game {
                             let leading_suit = self.leading_suit;
                             if rotation_status == 0 {
                                 self.leading_suit = card.suit;
+                                // to lead spades, spades must be broken OR only have spades in this hand
+                                if card.suit == Suit::Spade {
+                                    if self.spades_broken
+                                        || !player_hand.iter().any(|c| c.suit != Suit::Spade)
+                                    {
+                                    } else {
+                                        return Err(TransitionError::CardIncorrectSuit);
+                                    }
+                                }
                             }
                             if self.leading_suit != card.suit
                                 && player_hand.iter().any(|x| x.suit == leading_suit)
                             {
                                 return Err(TransitionError::CardIncorrectSuit);
+                            }
+
+                            if card.suit == Suit::Spade {
+                                self.spades_broken = true;
                             }
 
                             let card_index = player_hand.iter().position(|x| x == &card).unwrap();
@@ -320,11 +362,11 @@ impl Game {
                                 self.current_player_index,
                                 self.hands_played.last().unwrap(),
                             );
-                            if self.scoring.is_over {
+                            if self.scoring.is_over() {
                                 self.state = State::GameCompleted;
                                 return Ok(TransitionSuccess::GameOver);
                             }
-                            if self.scoring.in_betting_stage {
+                            if self.scoring.is_in_betting_stage() {
                                 self.current_player_index = 0;
                                 self.state = State::Betting((rotation_status + 1) % 4);
                                 self.deal_cards(); // TODO this looks like an error
@@ -346,6 +388,7 @@ impl Game {
                 if self.state != State::GameNotStarted {
                     return Err(TransitionError::GameAlreadyStarted);
                 }
+                self.spades_broken = false;
                 self.deal_cards();
                 self.state = State::Betting(0);
                 Ok(TransitionSuccess::Start)
@@ -354,17 +397,29 @@ impl Game {
     }
 
     fn deal_cards(&mut self) {
-        cards::shuffle(&mut self.deck);
+        //        cards::shuffle(&mut self.deck);
         let mut hands = cards::deal_four_players(&mut self.deck);
 
-        self.player_a.hand = hands.pop().unwrap();
-        self.player_b.hand = hands.pop().unwrap();
-        self.player_c.hand = hands.pop().unwrap();
-        self.player_d.hand = hands.pop().unwrap();
+        self.player[0].hand = hands.pop().unwrap();
+        self.player[1].hand = hands.pop().unwrap();
+        self.player[2].hand = hands.pop().unwrap();
+        self.player[3].hand = hands.pop().unwrap();
 
-        self.player_a.hand.sort();
-        self.player_b.hand.sort();
-        self.player_c.hand.sort();
-        self.player_d.hand.sort();
+        self.player[0].hand.sort();
+        self.player[1].hand.sort();
+        self.player[2].hand.sort();
+        self.player[3].hand.sort();
+    }
+
+    pub fn is_over(&self) -> bool {
+        self.scoring.is_over()
+    }
+
+    pub fn team_a_round_score(&self) -> i32 {
+        self.scoring.team[0].cumulative_points()
+    }
+
+    pub fn team_b_round_score(&self) -> i32 {
+        self.scoring.team[1].cumulative_points()
     }
 }
