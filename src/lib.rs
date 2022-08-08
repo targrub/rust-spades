@@ -52,7 +52,6 @@ pub use scoring::Bet;
 
 use uuid::Uuid;
 
-use cards::new_pot;
 use result::{TransitionError, TransitionSuccess};
 use scoring::Scoring;
 
@@ -82,7 +81,7 @@ pub struct Game {
     scoring: Scoring,
     current_player_index: usize,
     deck: Vec<cards::Card>,
-    hands_played: Vec<[cards::Card; 4]>,
+    hands_played: Vec<[Option<cards::Card>; 4]>,
     bets_placed: [Bet; 4],
     leading_suit: Suit,
     spades_broken: bool,
@@ -100,7 +99,7 @@ impl Default for Game {
             deck: cards::new_deck(),
             leading_suit: Suit::Blank,
             spades_broken: false,
-            hands_played: vec![new_pot()],
+            hands_played: vec![[None; 4]],
             bets_placed: [Bet::Amount(0); 4],
             player: [
                 Player::default(),
@@ -118,7 +117,7 @@ impl Game {
             id,
             state: State::GameNotStarted,
             scoring: scoring::Scoring::new(max_points),
-            hands_played: vec![new_pot()],
+            hands_played: vec![[None; 4]],
             bets_placed: [Bet::Amount(0); 4],
             deck: cards::new_deck(),
             current_player_index: 0,
@@ -230,7 +229,7 @@ impl Game {
     }
 
     /// Returns an array with (only if in the trick stage).
-    pub fn current_trick_cards(&self) -> Result<&[cards::Card; 4], SpadesError> {
+    pub fn current_trick_cards(&self) -> Result<&[Option<cards::Card>; 4], SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             State::GameCompleted => Err(SpadesError::GameCompleted),
@@ -376,7 +375,7 @@ impl Game {
                             self.deck.push(player_hand.remove(card_index));
                         }
 
-                        self.hands_played.last_mut().unwrap()[self.current_player_index] = card;
+                        self.hands_played.last_mut().unwrap()[self.current_player_index] = Some(card);
 
                         if rotation_status == 3 {
                             let winner = self.scoring.trick(
@@ -392,9 +391,9 @@ impl Game {
                                 self.state = State::Betting((rotation_status + 1) % 4);
                                 self.deal_cards(); // TODO this looks like an error
                             } else {
-                                self.current_player_index = winner;
+                                self.current_player_index = winner.unwrap();
                                 self.state = State::Trick((rotation_status + 1) % 4); // TODO this should just be 0
-                                self.hands_played.push(new_pot());
+                                self.hands_played.push([None; 4]);
                             }
                             Ok(TransitionSuccess::Trick)
                         } else {

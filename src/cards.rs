@@ -168,22 +168,26 @@ impl PartialOrd for Card {
 /// * Spades trump all other suits
 /// * The suit the first player (given by index) plays sets the suit of the trick
 /// * The highest ranking spades card or card of suit of first player's card wins the trick.
-pub fn get_trick_winner(leading_player_index: usize, others: &[Card; 4]) -> usize {
+pub fn get_trick_winner(leading_player_index: usize, others: &[Option<Card>; 4]) -> Option<usize> {
     let mut winning_index = leading_player_index;
-    let mut best_card = &others[leading_player_index];
-
-    for (i, other) in others.iter().enumerate() {
-        if other.suit == best_card.suit {
-            if other.rank as u8 > best_card.rank as u8 {
-                best_card = other;
-                winning_index = i;
+    if let Some(mut best_card) = others[leading_player_index] {
+        for (i, other) in others.iter().enumerate() {
+            if let Some(card) = *other {
+                if card.suit == best_card.suit {
+                    if card.rank as u8 > best_card.rank as u8 {
+                        best_card = card;
+                        winning_index = i;
+                    }
+                } else if card.suit == Suit::Spade {
+                    best_card = card;
+                    winning_index = i;
+                }
             }
-        } else if other.suit == Suit::Spade {
-            best_card = other;
-            winning_index = i;
         }
+        Some(winning_index)
+    } else {
+        None
     }
-    winning_index
 }
 
 /// Returns a shuffled deck of [`deck::Card`](struct.Card.html)'s, with 52 elements.
@@ -215,28 +219,6 @@ pub fn new_deck() -> Vec<Card> {
     cards
 }
 
-/// Returns an array of `Blank` suited and ranked cards.
-pub fn new_pot() -> [Card; 4] {
-    [
-        Card {
-            suit: Suit::Blank,
-            rank: Rank::Blank,
-        },
-        Card {
-            suit: Suit::Blank,
-            rank: Rank::Blank,
-        },
-        Card {
-            suit: Suit::Blank,
-            rank: Rank::Blank,
-        },
-        Card {
-            suit: Suit::Blank,
-            rank: Rank::Blank,
-        },
-    ]
-}
-
 /// Shuffles a `Vector` of cards in place, see [`rand::thread_rng::shuffle`](https://docs.rs/rand/0.5.4/rand/trait.Rng.html#method.shuffle).
 pub fn shuffle(cards: &mut [Card]) {
     let mut rng = thread_rng();
@@ -261,7 +243,7 @@ pub fn deal_four_players(cards: &mut Vec<Card>) -> Vec<Vec<Card>> {
 mod tests {
 
     use cards::{
-        deal_four_players, get_trick_winner, new_deck, new_pot, shuffle, Card, Rank, Suit,
+        deal_four_players, get_trick_winner, new_deck, shuffle, Card, Rank, Suit,
     };
     use std::fmt;
 
@@ -373,24 +355,6 @@ mod tests {
     }
 
     #[test]
-    fn new_pot_test() {
-        let c3d = Card::new(Suit::Diamond, Rank::Three);
-        let blank = Card::new(Suit::Blank, Rank::Blank);
-        let blank_spade = Card::new(Suit::Spade, Rank::Blank);
-        let blank_3 = Card::new(Suit::Blank, Rank::Three);
-
-        let cards = new_pot();
-        assert!(!cards.contains(&c3d));
-        assert!(cards.contains(&blank));
-        assert!(!cards.contains(&blank_spade));
-        assert!(!cards.contains(&blank_3));
-        assert_eq!(blank, cards[0]);
-        assert_eq!(blank, cards[1]);
-        assert_eq!(blank, cards[2]);
-        assert_eq!(blank, cards[3]);
-    }
-
-    #[test]
     fn test_winner_of_tricks() {
         let ah = Card::new(Suit::Heart, Rank::Ace);
         let ks = Card::new(Suit::Spade, Rank::King);
@@ -400,34 +364,34 @@ mod tests {
         let c3d = Card::new(Suit::Diamond, Rank::Three);
         let c3s = Card::new(Suit::Spade, Rank::Three);
 
-        let hand1 = [c2d, c3d, jd, qc];
-        assert_eq!(2, get_trick_winner(0, &hand1));
-        assert_eq!(2, get_trick_winner(1, &hand1));
-        assert_eq!(2, get_trick_winner(2, &hand1));
-        assert_eq!(3, get_trick_winner(3, &hand1));
+        let hand1 = [Some(c2d), Some(c3d), Some(jd), Some(qc)];
+        assert_eq!(Some(2), get_trick_winner(0, &hand1));
+        assert_eq!(Some(2), get_trick_winner(1, &hand1));
+        assert_eq!(Some(2), get_trick_winner(2, &hand1));
+        assert_eq!(Some(3), get_trick_winner(3, &hand1));
 
-        let hand2 = [ah, ks, qc, jd];
-        assert_eq!(1, get_trick_winner(0, &hand2));
-        assert_eq!(1, get_trick_winner(1, &hand2));
-        assert_eq!(1, get_trick_winner(2, &hand2));
-        assert_eq!(1, get_trick_winner(3, &hand2));
+        let hand2 = [Some(ah), Some(ks), Some(qc), Some(jd)];
+        assert_eq!(Some(1), get_trick_winner(0, &hand2));
+        assert_eq!(Some(1), get_trick_winner(1, &hand2));
+        assert_eq!(Some(1), get_trick_winner(2, &hand2));
+        assert_eq!(Some(1), get_trick_winner(3, &hand2));
 
-        let hand3 = [ah, c3d, qc, jd];
-        assert_eq!(0, get_trick_winner(0, &hand3));
-        assert_eq!(3, get_trick_winner(1, &hand3));
-        assert_eq!(2, get_trick_winner(2, &hand3));
-        assert_eq!(3, get_trick_winner(3, &hand3));
+        let hand3 = [Some(ah), Some(c3d), Some(qc), Some(jd)];
+        assert_eq!(Some(0), get_trick_winner(0, &hand3));
+        assert_eq!(Some(3), get_trick_winner(1, &hand3));
+        assert_eq!(Some(2), get_trick_winner(2, &hand3));
+        assert_eq!(Some(3), get_trick_winner(3, &hand3));
 
-        let hand4 = [ah, c3s, qc, jd];
-        assert_eq!(1, get_trick_winner(0, &hand4));
-        assert_eq!(1, get_trick_winner(1, &hand4));
-        assert_eq!(1, get_trick_winner(2, &hand4));
-        assert_eq!(1, get_trick_winner(3, &hand4));
+        let hand4 = [Some(ah), Some(c3s), Some(qc), Some(jd)];
+        assert_eq!(Some(1), get_trick_winner(0, &hand4));
+        assert_eq!(Some(1), get_trick_winner(1, &hand4));
+        assert_eq!(Some(1), get_trick_winner(2, &hand4));
+        assert_eq!(Some(1), get_trick_winner(3, &hand4));
 
-        let hand5 = [ks, c3s, qc, jd];
-        assert_eq!(0, get_trick_winner(0, &hand5));
-        assert_eq!(0, get_trick_winner(1, &hand5));
-        assert_eq!(0, get_trick_winner(2, &hand5));
-        assert_eq!(0, get_trick_winner(3, &hand5));
+        let hand5 = [Some(ks), Some(c3s), Some(qc), Some(jd)];
+        assert_eq!(Some(0), get_trick_winner(0, &hand5));
+        assert_eq!(Some(0), get_trick_winner(1, &hand5));
+        assert_eq!(Some(0), get_trick_winner(2, &hand5));
+        assert_eq!(Some(0), get_trick_winner(3, &hand5));
     }
 }
