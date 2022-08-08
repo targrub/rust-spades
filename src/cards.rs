@@ -9,7 +9,6 @@ use std::fmt::{self, Display};
 #[derive(Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
 pub enum Suit {
     #[default]
-    Blank = 0,
     Club = 1,
     Diamond = 2,
     Heart = 3,
@@ -19,7 +18,6 @@ pub enum Suit {
 impl fmt::Display for Suit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Suit::Blank => write!(f, " "),
             Suit::Club => write!(f, "\u{2667}"),
             Suit::Diamond => write!(f, "\u{2662}"),
             Suit::Heart => write!(f, "\u{2661}"),
@@ -31,33 +29,18 @@ impl fmt::Display for Suit {
 impl From<u8> for Suit {
     fn from(f: u8) -> Self {
         match f {
-            0 => Suit::Blank,
             1 => Suit::Club,
             2 => Suit::Diamond,
             3 => Suit::Heart,
             4 => Suit::Spade,
-            _ => Suit::Blank,
+            _ => panic!("illegal suit"),
         }
     }
-}
-
-#[test]
-fn test_from_u8_to_suit() {
-    let s: Suit = 3u8.into();
-    assert_eq!(Suit::Heart, s);
-    assert_eq!(Suit::Blank, 0u8.into());
-    assert_eq!(Suit::Club, 1u8.into());
-    assert_eq!(Suit::Diamond, 2u8.into());
-    assert_eq!(Suit::Heart, 3u8.into());
-    assert_eq!(Suit::Spade, 4u8.into());
-    assert_eq!(Suit::Blank, 5u8.into());
-    assert_eq!(Suit::Blank, 14u8.into());
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
 pub enum Rank {
     #[default]
-    Blank = 0,
     Two = 2,
     Three = 3,
     Four = 4,
@@ -89,27 +72,14 @@ impl From<u8> for Rank {
             12 => Rank::Queen,
             13 => Rank::King,
             14 => Rank::Ace,
-            _ => Rank::Blank,
+            _ => panic!("illegal rank"),
         }
     }
-}
-
-#[test]
-fn test_from_u8_to_rank() {
-    let r: Rank = 3u8.into();
-    assert_eq!(Rank::Three, r);
-    assert_eq!(Rank::Ace, 14u8.into());
-    assert_eq!(Rank::Ten, 10u8.into());
-    assert_eq!(Rank::Two, 2u8.into());
-    assert_eq!(Rank::Blank, 0u8.into());
-    assert_eq!(Rank::Blank, 1u8.into());
-    assert_eq!(Rank::Blank, 15u8.into());
 }
 
 impl fmt::Display for Rank {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Rank::Blank => write!(f, " "),
             Rank::Two => write!(f, "2"),
             Rank::Three => write!(f, "3"),
             Rank::Four => write!(f, "4"),
@@ -240,6 +210,67 @@ pub fn deal_four_players(cards: &mut Vec<Card>) -> Vec<Vec<Card>> {
 }
 
 #[cfg(test)]
+mod suit_tests {
+use Suit;
+
+    #[test]
+    fn test_from_u8_to_suit() {
+        let mut s: Suit = 3u8.into();
+        assert_eq!(Suit::Heart, s);
+        assert_eq!(Suit::Club, 1u8.into());
+        assert_eq!(Suit::Diamond, 2u8.into());
+        assert_eq!(Suit::Heart, 3u8.into());
+        assert_eq!(Suit::Spade, 4u8.into());
+    }
+
+    #[test]
+    #[should_panic(expected="illegal suit")]
+    fn test_from_0_to_suit_panics() {
+        let s: Suit = 0u8.into();
+    }
+
+    #[test]
+    #[should_panic(expected="illegal suit")]
+    fn test_from_5_to_suit_panics() {
+        let s: Suit = 5u8.into();
+    }
+}
+
+#[cfg(test)]
+mod rank_tests {
+
+use cards::Rank;
+
+    #[test]
+    fn test_from_u8_to_rank() {
+        let r: Rank = 3u8.into();
+        assert_eq!(Rank::Three, r);
+        assert_eq!(Rank::Ace, 14u8.into());
+        assert_eq!(Rank::Ten, 10u8.into());
+        assert_eq!(Rank::Two, 2u8.into());
+    }
+    
+    #[test]
+    #[should_panic(expected="illegal rank")]
+    fn test_from_0_to_rank() {
+        let r: Rank = 0u8.into();
+    }
+
+    #[test]
+    #[should_panic(expected="illegal rank")]
+    fn test_from_1_to_rank() {
+        let r: Rank = 1u8.into();
+    }
+
+    #[test]
+    #[should_panic(expected="illegal rank")]
+    fn test_from_15_to_rank() {
+        let r: Rank = 15u8.into();
+    }
+    
+}
+
+#[cfg(test)]
 mod tests {
 
     use cards::{
@@ -255,7 +286,6 @@ mod tests {
         let jd = Card::new(Suit::Diamond, Rank::Jack);
         let c2d = Card::new(Suit::Diamond, Rank::Two);
         let c3d = Card::new(Suit::Diamond, Rank::Three);
-        let blank = Card::new(Suit::Blank, Rank::Blank);
         let mut cards = [ah, ks, qc, jd, c2d];
         let the_copy = cards;
         let the_clone = cards.clone();
@@ -268,7 +298,6 @@ mod tests {
         assert!(cards.contains(&jd));
         assert!(cards.contains(&c2d));
         assert!(!cards.contains(&c3d));
-        assert!(!cards.contains(&blank));
         assert_ne!(cards, the_copy);
         assert_ne!(cards, the_clone);
     }
@@ -338,9 +367,6 @@ mod tests {
         let jd = Card::new(Suit::Diamond, Rank::Jack);
         let c2d = Card::new(Suit::Diamond, Rank::Two);
         let c3d = Card::new(Suit::Diamond, Rank::Three);
-        let blank = Card::new(Suit::Blank, Rank::Blank);
-        let blank_spade = Card::new(Suit::Spade, Rank::Blank);
-        let blank_3 = Card::new(Suit::Blank, Rank::Three);
 
         let deck = new_deck();
         assert!(deck.contains(&ah));
@@ -349,9 +375,6 @@ mod tests {
         assert!(deck.contains(&jd));
         assert!(deck.contains(&c2d));
         assert!(deck.contains(&c3d));
-        assert!(!deck.contains(&blank));
-        assert!(!deck.contains(&blank_spade));
-        assert!(!deck.contains(&blank_3));
     }
 
     #[test]

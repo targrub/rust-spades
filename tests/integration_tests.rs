@@ -28,7 +28,8 @@ fn main() {
             assert!(g.current_hand().is_ok());
             let mut hand = g.current_hand().ok().unwrap().clone();
 
-            let x = get_valid_card_index(*g.leading_suit().unwrap(), &hand);
+            let leading_suit_opt = g.leading_suit().unwrap();
+            let x = get_valid_card_index(leading_suit_opt, &hand);
 
             if let Ok(response) = g.play_card(hand[x].clone()) {
                 // we're good
@@ -57,10 +58,10 @@ fn main() {
     assert_eq!(g.state(), State::GameCompleted);
 }
 
-pub fn get_valid_card_index(leading_suit: Suit, hand: &Vec<Card>) -> usize {
-    if hand.iter().any(|ref x| x.suit == leading_suit) && leading_suit != Suit::Blank {
+pub fn get_valid_card_index(leading_suit: Option<Suit>, hand: &Vec<Card>) -> usize {
+    if hand.iter().any(|ref x| Some(x.suit) == leading_suit)  {
         hand.iter()
-            .position(|ref x| x.suit == leading_suit)
+            .position(|ref x| Some(x.suit) == leading_suit)
             .unwrap()
     } else {
         if let Some(card_index) = hand.iter().position(|c| c.suit == Suit::Spade) {
@@ -69,7 +70,7 @@ pub fn get_valid_card_index(leading_suit: Suit, hand: &Vec<Card>) -> usize {
         } else {
             if let Some(card_index) = hand
                 .iter()
-                .position(|c| c.suit != Suit::Spade && c.suit != leading_suit)
+                .position(|c| c.suit != Suit::Spade && Some(c.suit) != leading_suit)
             {
                 //println!("try {:?}", hand[card_index]);
                 card_index

@@ -83,7 +83,7 @@ pub struct Game {
     deck: Vec<cards::Card>,
     hands_played: Vec<[Option<cards::Card>; 4]>,
     bets_placed: [Bet; 4],
-    leading_suit: Suit,
+    leading_suit: Option<Suit>,
     spades_broken: bool,
     //rule_blind_nil_allowed: bool,
     player: [Player; 4],
@@ -97,7 +97,7 @@ impl Default for Game {
             scoring: scoring::Scoring::default(),
             current_player_index: 0,
             deck: cards::new_deck(),
-            leading_suit: Suit::Blank,
+            leading_suit: None,
             spades_broken: false,
             hands_played: vec![[None; 4]],
             bets_placed: [Bet::Amount(0); 4],
@@ -121,7 +121,7 @@ impl Game {
             bets_placed: [Bet::Amount(0); 4],
             deck: cards::new_deck(),
             current_player_index: 0,
-            leading_suit: Suit::Blank,
+            leading_suit: None,
             spades_broken: false,
             //rule_blind_nil_allowed: false,
             player: [
@@ -219,11 +219,11 @@ impl Game {
         }
     }
 
-    pub fn leading_suit(&self) -> Result<&Suit, SpadesError> {
+    pub fn leading_suit(&self) -> Result<Option<Suit>, SpadesError> {
         match &self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             State::GameCompleted => Err(SpadesError::GameCompleted),
-            State::Trick(_) => Ok(&self.leading_suit),
+            State::Trick(_) => Ok(self.leading_suit),
             _ => Err(SpadesError::InternalError),
         }
     }
@@ -350,7 +350,7 @@ impl Game {
                             }
                             let leading_suit = self.leading_suit;
                             if rotation_status == 0 {
-                                self.leading_suit = card.suit;
+                                self.leading_suit = Some(card.suit);
                                 // to lead spades, spades must be broken OR only have spades in this hand
                                 if card.suit == Suit::Spade {
                                     if self.spades_broken
@@ -361,8 +361,8 @@ impl Game {
                                     }
                                 }
                             }
-                            if self.leading_suit != card.suit
-                                && player_hand.iter().any(|x| x.suit == leading_suit)
+                            if self.leading_suit != Some(card.suit)
+                                && player_hand.iter().any(|x| Some(x.suit) == leading_suit)
                             {
                                 return Err(TransitionError::CardIncorrectSuit);
                             }
