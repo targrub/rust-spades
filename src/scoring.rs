@@ -233,42 +233,38 @@ impl Scoring {
         self.team[1].game_points = 0;
     }
 
-    pub fn trick(&mut self, starting_player_index: usize, cards: &[Option<Card>; 4]) -> Option<usize> {
-        let winner_opt = get_trick_winner(starting_player_index, cards);
-        if let Some(winner) = winner_opt {
-            self.players[winner].won_trick[self.trick] = true;
+    pub fn trick(&mut self, starting_player_index: usize, cards: &Vec<Card>) -> usize {
+        let winner = get_trick_winner(starting_player_index, &cards);
+        self.players[winner].won_trick[self.trick] = true;
 
-            if self.trick == 12 {
-                // score the round
-                self.team[0].calculate_round_totals(
-                    self.bets_placed[0],
-                    &self.players[0],
-                    self.bets_placed[2],
-                    &self.players[2],
-                );
-                self.team[1].calculate_round_totals(
-                    self.bets_placed[1],
-                    &self.players[1],
-                    self.bets_placed[3],
-                    &self.players[3],
-                );
-                if self.team[0].cumulative_points >= self.config.max_points
-                    || self.team[1].cumulative_points >= self.config.max_points
-                {
-                    self.is_over = true;
-                }
-
-                // reset structure for possible next round
-                self.in_betting_stage = true;
-
-                self.round += 1;
-            } else {
-                self.trick += 1;
+        if self.trick == 12 {
+            // score the round
+            self.team[0].calculate_round_totals(
+                self.bets_placed[0],
+                &self.players[0],
+                self.bets_placed[2],
+                &self.players[2],
+            );
+            self.team[1].calculate_round_totals(
+                self.bets_placed[1],
+                &self.players[1],
+                self.bets_placed[3],
+                &self.players[3],
+            );
+            if self.team[0].cumulative_points >= self.config.max_points
+                || self.team[1].cumulative_points >= self.config.max_points
+            {
+                self.is_over = true;
             }
-            Some(winner)
+
+            // reset structure for possible next round
+            self.in_betting_stage = true;
+
+            self.round += 1;
         } else {
-            None
+            self.trick += 1;
         }
+        winner
     }
 
     pub fn is_over(&self) -> bool {
@@ -283,7 +279,7 @@ impl Scoring {
 #[cfg(test)]
 mod tests {
     use super::{PlayerState, Scoring, TeamState};
-    use Bet;
+    use super::Bet;
 
     #[test]
     fn test_playerstate_new() {

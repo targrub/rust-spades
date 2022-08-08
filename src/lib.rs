@@ -45,15 +45,17 @@ mod scoring;
 #[cfg(test)]
 mod tests;
 
-pub use cards::{Card, Suit};
-pub use game_state::State;
-pub use result::SpadesError;
-pub use scoring::Bet;
+pub use cards::Card as Card;
+pub use cards::Suit as Suit;
+pub use game_state::State as State;
+pub use result::SpadesError as SpadesError;
+pub use scoring::Bet as Bet;
 
 use uuid::Uuid;
 
 use result::{TransitionError, TransitionSuccess};
 use scoring::Scoring;
+use cards::{new_deck, deal_four_players};
 
 enum GameAction {
     Bet(Bet),
@@ -80,8 +82,8 @@ pub struct Game {
     state: State,
     scoring: Scoring,
     current_player_index: usize,
-    deck: Vec<cards::Card>,
-    hands_played: Vec<[Option<cards::Card>; 4]>,
+    deck: Vec<Card>,
+    current_trick: Vec<Card>,
     bets_placed: [Bet; 4],
     leading_suit: Option<Suit>,
     spades_broken: bool,
@@ -94,12 +96,12 @@ impl Default for Game {
         Game {
             id: Uuid::default(),
             state: State::GameNotStarted,
-            scoring: scoring::Scoring::default(),
+            scoring: Scoring::default(),
             current_player_index: 0,
-            deck: cards::new_deck(),
+            deck: new_deck(),
             leading_suit: None,
             spades_broken: false,
-            hands_played: vec![[None; 4]],
+            current_trick: Vec::new(),
             bets_placed: [Bet::Amount(0); 4],
             player: [
                 Player::default(),
@@ -116,10 +118,10 @@ impl Game {
         Game {
             id,
             state: State::GameNotStarted,
-            scoring: scoring::Scoring::new(max_points),
-            hands_played: vec![[None; 4]],
+            scoring: Scoring::new(max_points),
+            current_trick: Vec::new(),
             bets_placed: [Bet::Amount(0); 4],
-            deck: cards::new_deck(),
+            deck: new_deck(),
             current_player_index: 0,
             leading_suit: None,
             spades_broken: false,
@@ -225,16 +227,6 @@ impl Game {
             State::GameCompleted => Err(SpadesError::GameCompleted),
             State::Trick(_) => Ok(self.leading_suit),
             _ => Err(SpadesError::InternalError),
-        }
-    }
-
-    /// Returns an array with (only if in the trick stage).
-    pub fn current_trick_cards(&self) -> Result<&[Option<cards::Card>; 4], SpadesError> {
-        match self.state {
-            State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            State::GameCompleted => Err(SpadesError::GameCompleted),
-            State::Betting(_) => Err(SpadesError::GameCompleted),
-            State::Trick(_) => Ok(self.hands_played.last().unwrap()),
         }
     }
 
@@ -375,13 +367,14 @@ impl Game {
                             self.deck.push(player_hand.remove(card_index));
                         }
 
-                        self.hands_played.last_mut().unwrap()[self.current_player_index] = Some(card);
+                        self.current_trick.push(card);
 
                         if rotation_status == 3 {
                             let winner = self.scoring.trick(
                                 self.current_player_index,
-                                self.hands_played.last().unwrap(),
+                                &self.current_trick,
                             );
+                            self.current_trick.clear();
                             if self.scoring.is_over() {
                                 self.state = State::GameCompleted;
                                 return Ok(TransitionSuccess::GameOver);
@@ -389,11 +382,10 @@ impl Game {
                             if self.scoring.is_in_betting_stage() {
                                 self.current_player_index = 0;
                                 self.state = State::Betting((rotation_status + 1) % 4);
-                                self.deal_cards(); // TODO this looks like an error
+                                self.deal_cards();
                             } else {
-                                self.current_player_index = winner.unwrap();
+                                self.current_player_index = winner;
                                 self.state = State::Trick((rotation_status + 1) % 4); // TODO this should just be 0
-                                self.hands_played.push([None; 4]);
                             }
                             Ok(TransitionSuccess::Trick)
                         } else {
@@ -418,7 +410,7 @@ impl Game {
 
     fn deal_cards(&mut self) {
         //        cards::shuffle(&mut self.deck);
-        let mut hands = cards::deal_four_players(&mut self.deck);
+        let mut hands = deal_four_players(&mut self.deck);
 
         self.player[0].hand = hands.pop().unwrap();
         self.player[1].hand = hands.pop().unwrap();
@@ -442,4 +434,145 @@ impl Game {
     pub fn team_b_round_score(&self) -> i32 {
         self.scoring.team[1].cumulative_points()
     }
+}
+
+
+#[cfg(test)]
+mod game_tests {
+
+#![allow(unused_variables)]
+
+use Game;
+use State;
+use SpadesError;
+use Bet;
+
+    #[test]
+    fn test_create_game() {
+        let game_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p1_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p2_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p3_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p4_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
+        let max_points: i32 = -1;
+
+        let g = Game::new(game_uuid, player_uuids, max_points);
+        let cpi = g.current_player_index;
+        assert_eq!(0, cpi);
+        let curr_trick = g.current_trick;
+        assert!(curr_trick.is_empty());
+        let deck = g.deck;
+        assert_eq!(52, deck.len());
+        let gameid = g.id;
+        assert_eq!(game_uuid, gameid);
+        let leading_suit = g.leading_suit;
+        assert_eq!(None, leading_suit);
+        let players = g.player;
+        assert_eq!(p1_uuid, players[0].id);
+        assert_eq!(p2_uuid, players[1].id);
+        assert_eq!(p3_uuid, players[2].id);
+        assert_eq!(p4_uuid, players[3].id);
+        let b = g.scoring;
+        let spades_broken = g.spades_broken;
+        assert_eq!(false, spades_broken);
+        let gamestate = g.state;
+        assert_eq!(State::GameNotStarted, gamestate);
+    }
+
+    #[test]
+    fn test_default_game() {
+        let g = Game::default();
+        let cpi = g.current_player_index;
+        assert_eq!(0, cpi);
+        let curr_trick = g.current_trick;
+        assert!(curr_trick.is_empty());
+        let deck = g.deck;
+        assert_eq!(52, deck.len());
+        let leading_suit = g.leading_suit;
+        assert_eq!(None, leading_suit);
+        let players = g.player;
+        assert!(players[0].hand.is_empty());
+        let b = g.scoring;
+        let spades_broken = g.spades_broken;
+        assert_eq!(false, spades_broken);
+        let gamestate = g.state;
+        assert_eq!(State::GameNotStarted, gamestate);
+    }
+
+    #[test]
+    fn test_queries_when_gamenotstarted() {
+        let g = Game::default();
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_game_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_bags());
+        assert_eq!(0, g.team_a_round_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_tricks());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_game_score());
+        assert_eq!(0, g.team_b_round_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_tricks());
+    }
+
+    #[test]
+    fn test_current_player_id() {
+        let game_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p1_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p2_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p3_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p4_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
+        let mut g = Game::new(game_uuid, player_uuids, 500);
+        let mut cpi_response = g.current_player_id();
+        assert_eq!(Err(SpadesError::GameNotStarted), cpi_response);
+        g.start_game();
+        cpi_response = g.current_player_id();
+        assert_eq!(Ok(&p1_uuid), cpi_response);
+        let mut action_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Ok(()), action_response);
+        cpi_response = g.current_player_id();
+        assert_eq!(Ok(&p2_uuid), cpi_response);
+        action_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Ok(()), action_response);
+        cpi_response = g.current_player_id();
+        assert_eq!(Ok(&p3_uuid), cpi_response);
+        action_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Ok(()), action_response);
+        cpi_response = g.current_player_id();
+        assert_eq!(Ok(&p4_uuid), cpi_response);
+        action_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Ok(()), action_response);
+        cpi_response = g.current_player_id();
+        assert_eq!(Ok(&p1_uuid), cpi_response);
+        action_response = g.play_card(g.current_hand().unwrap()[0]);
+        assert_eq!(Ok(()), action_response);
+        cpi_response = g.current_player_id();
+        assert_eq!(Ok(&p2_uuid), cpi_response);
+    }
+
+    #[test]
+    fn test_hand_from_player_id() {
+        let game_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p1_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p2_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p3_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let p4_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let unknown_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
+        let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
+        let mut g = Game::new(game_uuid, player_uuids, 500);
+        g.start_game();
+        let p1_hand_result = g.hand_from_player_id(p1_uuid);
+        if let Ok(p1_hand) = p1_hand_result {
+            assert_eq!(13, p1_hand.len());
+        } else {
+            assert!(false); // p1 is a valid player, so should not error
+        }
+        let unknown_hand_result = g.hand_from_player_id(unknown_uuid);
+        assert_eq!(Err(SpadesError::InvalidUuid), unknown_hand_result);
+        if let Ok(p1_hand) = p1_hand_result {
+            assert_eq!(13, p1_hand.len());
+        } else {
+
+        }
+    }
+
 }
