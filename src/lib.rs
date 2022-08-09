@@ -74,12 +74,17 @@ use scoring::Scoring;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 struct Player {
     id: Uuid,
+    seen_hand: bool,
     hand: Vec<Card>,
 }
 
 impl Player {
     fn new(id: Uuid) -> Player {
-        Player { id, hand: vec![] }
+        Player {
+            id,
+            seen_hand: false,
+            hand: vec![],
+        }
     }
 }
 
@@ -169,14 +174,14 @@ impl Game {
     pub fn team_a_round_score(&self) -> Result<i32, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[0].cumulative_points())
+            _ => Ok(self.scoring.team[0].cumulative_points()),
         }
     }
 
     pub fn team_b_round_score(&self) -> Result<i32, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[1].cumulative_points())
+            _ => Ok(self.scoring.team[1].cumulative_points()),
         }
     }
 
@@ -249,11 +254,14 @@ impl Game {
         Err(SpadesError::InvalidUuid)
     }
 
-    pub fn current_hand(&self) -> Result<&Vec<Card>, SpadesError> {
+    pub fn current_hand(&mut self) -> Result<&Vec<Card>, SpadesError> {
         match (&self.state, self.current_player_index) {
             (State::GameNotStarted, _) => Err(SpadesError::GameNotStarted),
             (State::GameCompleted, _) => Err(SpadesError::GameCompleted),
-            (State::Betting(_), p) | (State::Trick(_), p) => Ok(&self.player[p].hand),
+            (State::Betting(_), p) | (State::Trick(_), p) => {
+                self.player[p].seen_hand = true;
+                Ok(&self.player[p].hand)
+            }
         }
     }
 
@@ -285,17 +293,17 @@ impl Game {
         Ok(self.bets_placed)
     }
 
-/// Start -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
-///
-/// If you want to check for errors:
-/// if let Some(why_not) = g.can_start_game() {
-///    // library user error
-/// } else {
-///  g.start_game();
-/// }
-///
-/// don't check for errors
-/// g.start_game();
+    /// Start -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
+    ///
+    /// If you want to check for errors:
+    /// if let Some(why_not) = g.can_start_game() {
+    ///    // library user error
+    /// } else {
+    ///  g.start_game();
+    /// }
+    ///
+    /// don't check for errors
+    /// g.start_game();
     pub fn can_start_game(&self) -> Option<SpadesError> {
         if self.state == State::GameNotStarted {
             None
@@ -312,29 +320,35 @@ impl Game {
         }
     }
 
-/// If you want to check for errors:
-/// let bet: Bet = Bet::Amount(5);
-/// if let Some(why_not) = g.can_place_bet(bet) {
-///    // library user error why_not of type SpadesError
-/// } else {
-///  if let Some(bet_result) = g.place_bet(bet) {
-///    // bet_result either BetResult::SuccessfulBet or BetResult::SuccessfulBetCompletedBetting
-///  }
-/// }
-/// If you don't want check for errors:
-/// let bet: Bet = Bet::Amount(5);
-/// g.place_bet(bet);
-    pub fn can_place_bet(&self) -> Option<SpadesError> {
+    /// If you want to check for errors:
+    /// let bet: Bet = Bet::Amount(5);
+    /// if let Some(why_not) = g.can_place_bet(bet) {
+    ///    // library user error why_not of type SpadesError
+    /// } else {
+    ///  if let Some(bet_result) = g.place_bet(bet) {
+    ///    // bet_result either BetResult::SuccessfulBet or BetResult::SuccessfulBetCompletedBetting
+    ///  }
+    /// }
+    /// If you don't want check for errors:
+    /// let bet: Bet = Bet::Amount(5);
+    /// g.place_bet(bet);
+    pub fn can_place_bet(&self, bet: Bet) -> Option<SpadesError> {
         match self.state {
             State::GameNotStarted => Some(SpadesError::GameNotStarted),
             State::Trick(_) => Some(SpadesError::ImproperGameStage),
-            State::Betting(_rotation_status) => None,
             State::GameCompleted => Some(SpadesError::GameCompleted),
+            State::Betting(_rotation_status) => {
+                if bet == Bet::BlindNil && self.player[self.current_player_index].seen_hand == true {
+                    Some(SpadesError::BetImproperSeenHand)
+                } else {
+                    None
+                }
+            },
         }
     }
 
     pub fn place_bet(&mut self, bet: Bet) -> Option<BetResult> {
-        if let Some(_err) = self.can_place_bet() {
+        if let Some(_err) = self.can_place_bet(bet) {
             // don't do anything if can't make the bet
             None
         } else if let State::Betting(rotation_status) = self.state {
@@ -560,7 +574,7 @@ mod game_tests {
     }
 
     #[test]
-    fn test_current_player_id() {
+    fn test_current_player_id_and_blind_nil_bets() {
         let game_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
         let p1_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
         let p2_uuid = uuid::Uuid::new(uuid::UuidVersion::Random).unwrap();
@@ -573,23 +587,31 @@ mod game_tests {
         g.start_game();
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p1_uuid), cpi_response);
-        let mut bet_action_response = g.place_bet(Bet::Amount(3));
-        assert_eq!(Some(BetResult::MadeBet), bet_action_response);
+        let look_at_hand_response = g.current_hand();
+        assert_eq!(true, look_at_hand_response.is_ok());
+        assert_eq!(13, look_at_hand_response.unwrap().len());
+        let mut can_bet_response = g.can_place_bet(Bet::BlindNil);
+        assert_eq!(Some(SpadesError::BetImproperSeenHand), can_bet_response);
+        can_bet_response = g.can_place_bet(Bet::Nil);
+        assert_eq!(None, can_bet_response);
+        let mut place_bet_response = g.place_bet(Bet::Nil);
+        assert_eq!(Some(BetResult::MadeBet), place_bet_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p2_uuid), cpi_response);
-        bet_action_response = g.place_bet(Bet::Amount(3));
-        assert_eq!(Some(BetResult::MadeBet), bet_action_response);
+        place_bet_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Some(BetResult::MadeBet), place_bet_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p3_uuid), cpi_response);
-        bet_action_response = g.place_bet(Bet::Amount(3));
-        assert_eq!(Some(BetResult::MadeBet), bet_action_response);
+        place_bet_response = g.place_bet(Bet::BlindNil);
+        assert_eq!(Some(BetResult::MadeBet), place_bet_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p4_uuid), cpi_response);
-        bet_action_response = g.place_bet(Bet::Amount(3));
-        assert_eq!(Some(BetResult::CompletedBetting), bet_action_response);
+        place_bet_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Some(BetResult::CompletedBetting), place_bet_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p1_uuid), cpi_response);
-        let play_card_action_response = g.play_card(g.current_hand().unwrap()[0]);
+        let card_to_play = g.current_hand().unwrap()[0];
+        let play_card_action_response = g.play_card(card_to_play);
         assert_eq!(Some(PlayCardResult::CardPlayed), play_card_action_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p2_uuid), cpi_response);

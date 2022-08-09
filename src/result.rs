@@ -6,6 +6,7 @@ pub enum SpadesError {
     GameNotStarted,
     GameCompleted,
     GameNotCompleted,
+    BetImproperSeenHand,
     CardIncorrectSuit,
     CardNotInHand,
     ImproperGameStage,
@@ -26,6 +27,9 @@ impl fmt::Display for SpadesError {
             }
             SpadesError::GameNotCompleted => {
                 write!(f, "game is not complete")
+            }
+            SpadesError::BetImproperSeenHand => {
+                write!(f, "blind nil bet improper; seen hand")
             }
             SpadesError::CardIncorrectSuit => {
                 write!(f, "card of incorrect suit")

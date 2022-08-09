@@ -128,9 +128,7 @@ impl TeamState {
         let team_bets = first_player_bet + second_player_bet;
         assert!(first_player_tricks <= 13);
         assert!(second_player_tricks <= 13);
-        if self.tricks > 13 {
-            panic!("won over 13 tricks: got {}", self.tricks);
-        }
+        assert!(self.tricks <= 13);
         self.game_points = 0;
         self.game_bags = 0;
         if self.tricks >= team_bets {
@@ -145,20 +143,22 @@ impl TeamState {
         }
 
         if first_player_bet == 0 {
+            let change_amount = { if first_bet == Bet::BlindNil { 200 } else { 100 }};
             if first_player_tricks == 0 {
-                self.game_points += 100;
+                self.game_points += change_amount;
             } else {
-                self.game_points -= 100;
+                self.game_points -= change_amount;
             }
             if second_player_tricks >= team_bets && second_player_bet != 0 {
                 self.game_points += self.tricks as i32 - team_bets as i32 + (team_bets as i32 * 10);
             }
         }
         if second_player_bet == 0 {
+            let change_amount = { if second_bet == Bet::BlindNil { 200 } else { 100 }};
             if second_player_tricks == 0 {
-                self.game_points += 100;
+                self.game_points += change_amount;
             } else {
-                self.game_points -= 100;
+                self.game_points -= change_amount;
             }
             if first_player_tricks >= team_bets && first_player_bet != 0 {
                 self.game_points += self.tricks as i32 - team_bets as i32 + (team_bets as i32 * 10);
@@ -561,7 +561,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "won over 13 tricks")]
+    #[should_panic(expected = "assertion failed: self.tricks <= 13")]
     fn test_game_end_scoring_winning_14_tricks_panics() {
         let mut ts = TeamState::new();
         let first_bet = Bet::Nil;
