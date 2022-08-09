@@ -34,18 +34,18 @@
 //!     println!("All rounds of the game are complete.  The winning score was ");
 //! }
 //! ```
-//! 
+//!
 //!
 //! The sequence of a round of the game is expected to go as follows:
 //! Start -> Bet * 4 -> Card * 4 * 13 -> [End of a round] -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
-//! 
+//!
 //! The game is in` State` `GameNotStarted` until it is started via a `start_game()` call.
 //! That moves it to `State` `Betting(player_number)`.  Once all 4 players have bet, the game mvoes to
 //! `State` `Trick(player_number)`.  After 13 tricks of cards played by each of the 4 players, the round is over.
 //! The game `State` will move either back to the `Betting` state for a new round of the game, or to `GameCompleted`
 //! if one team has scored enough cumulative points to have won the game (at least as many as the `max_points`
 //! parameter given to `Game::new()`).
-//! 
+//!
 
 extern crate uuid;
 
@@ -57,7 +57,7 @@ mod scoring;
 #[cfg(test)]
 mod tests;
 
-pub use cards::{Card, Suit, Rank};
+pub use cards::{Card, Rank, Suit};
 pub use game_state::State;
 pub use result::SpadesError;
 pub use scoring::Bet;
@@ -333,9 +333,9 @@ impl Game {
     }
 
     /// Use this method to check whether the game is expecting start_game to be called next.
-    /// 
+    ///
     /// If you want to check for errors:
-    /// 
+    ///
     /// let mut g = Game::default();
     /// if let Some(why_not) = g.can_start_game() {
     ///    // library user error
@@ -363,7 +363,7 @@ impl Game {
     }
 
     /// Use this method to know whether it is valid to make this bet.
-    /// 
+    ///
     /// If you want to check for errors:
     /// let mut g = Game::default();
     /// let bet = Bet::Amount(5);
@@ -388,7 +388,7 @@ impl Game {
                 } else {
                     None
                 }
-            },
+            }
         }
     }
 
@@ -485,15 +485,15 @@ impl Game {
             if self.scoring.is_in_betting_stage() {
                 self.current_player_index = 0;
                 self.state = State::Betting((rotation_status + 1) % 4);
-                self.deal_cards();       // NOTE: The deal should happen when move from Start to Betting
+                self.deal_cards(); // NOTE: The deal should happen when move from Start to Betting
             } else {
                 self.current_player_index = winner; // the trick winner will lead on the next trick
-                self.state = State::Trick((rotation_status + 1) % 4);   // NOTE: Why not current_player_index?
+                self.state = State::Trick((rotation_status + 1) % 4); // NOTE: Why not current_player_index?
             }
             PlayCardResult::TrickCompleted
         } else {
             self.current_player_index = (self.current_player_index + 1) % 4;
-            self.state = State::Trick((rotation_status + 1) % 4);   // NOTE: Why not current_player_index?
+            self.state = State::Trick((rotation_status + 1) % 4); // NOTE: Why not current_player_index?
             PlayCardResult::CardPlayed
         }
     }
@@ -612,15 +612,33 @@ mod game_tests {
     #[test]
     fn test_queries_when_gamenotstarted() {
         let g = Game::default();
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_individual_round_bags());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_individual_round_score());
+        assert_eq!(
+            Err(SpadesError::GameNotStarted),
+            g.team_a_individual_round_bags()
+        );
+        assert_eq!(
+            Err(SpadesError::GameNotStarted),
+            g.team_a_individual_round_score()
+        );
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_all_rounds_bags());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_all_rounds_score());
+        assert_eq!(
+            Err(SpadesError::GameNotStarted),
+            g.team_a_all_rounds_score()
+        );
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_tricks());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_individual_round_bags());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_individual_round_score());
+        assert_eq!(
+            Err(SpadesError::GameNotStarted),
+            g.team_b_individual_round_bags()
+        );
+        assert_eq!(
+            Err(SpadesError::GameNotStarted),
+            g.team_b_individual_round_score()
+        );
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_all_rounds_bags());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_all_rounds_score());
+        assert_eq!(
+            Err(SpadesError::GameNotStarted),
+            g.team_b_all_rounds_score()
+        );
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_tricks());
     }
 

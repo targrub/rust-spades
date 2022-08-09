@@ -143,7 +143,13 @@ impl TeamState {
         }
 
         if first_player_bet == 0 {
-            let change_amount = { if first_bet == Bet::BlindNil { 200 } else { 100 }};
+            let change_amount = {
+                if first_bet == Bet::BlindNil {
+                    200
+                } else {
+                    100
+                }
+            };
             if first_player_tricks == 0 {
                 self.game_points += change_amount;
             } else {
@@ -154,7 +160,13 @@ impl TeamState {
             }
         }
         if second_player_bet == 0 {
-            let change_amount = { if second_bet == Bet::BlindNil { 200 } else { 100 }};
+            let change_amount = {
+                if second_bet == Bet::BlindNil {
+                    200
+                } else {
+                    100
+                }
+            };
             if second_player_tricks == 0 {
                 self.game_points += change_amount;
             } else {
