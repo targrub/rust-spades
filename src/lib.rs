@@ -1,4 +1,4 @@
-//! This crate provides an implementation of the four person card game, [spades](https://www.pagat.com/auctionwhist/spades.html).
+//! This crate provides an implementation of the four person card game, [Spades](https://www.pagat.com/auctionwhist/spades.html).
 //! ## Example usage
 //! ```
 //! extern crate rand;
@@ -34,6 +34,18 @@
 //!     println!("All rounds of the game are complete.  The winning score was ");
 //! }
 //! ```
+//! 
+//!
+//! The sequence of a round of the game is expected to go as follows:
+//! Start -> Bet * 4 -> Card * 4 * 13 -> [End of a round] -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
+//! 
+//! The game is in` State` `GameNotStarted` until it is started via a `start_game()` call.
+//! That moves it to `State` `Betting(player_number)`.  Once all 4 players have bet, the game mvoes to
+//! `State` `Trick(player_number)`.  After 13 tricks of cards played by each of the 4 players, the round is over.
+//! The game `State` will move either back to the `Betting` state for a new round of the game, or to `GameCompleted`
+//! if one team has scored enough cumulative points to have won the game (at least as many as the `max_points`
+//! parameter given to `Game::new()`).
+//! 
 
 extern crate uuid;
 
@@ -45,24 +57,31 @@ mod scoring;
 #[cfg(test)]
 mod tests;
 
-pub use cards::Card;
-pub use cards::Suit;
+pub use cards::{Card, Suit, Rank};
 pub use game_state::State;
 pub use result::SpadesError;
 pub use scoring::Bet;
 
+/// If a bet is made successfully, this lets one distinguish whether that bet ends the round of betting.
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub enum BetResult {
+    /// Bet was made successfully.
     #[default]
     MadeBet,
+    /// This bet completed the betting stage.
     CompletedBetting,
 }
 
+/// If a card is played successfully, this lets one distinguish whether that card results in the completion
+/// of a trick, or even the entire game.
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub enum PlayCardResult {
+    /// The card was played successfully.
     #[default]
     CardPlayed,
+    /// The playing of the card completed a trick.
     TrickCompleted,
+    /// The playing of the card completed the game.
     GameCompleted,
 }
 
@@ -148,6 +167,7 @@ impl Game {
         }
     }
 
+    /// The uuid of the game itself
     pub fn id(&self) -> &Uuid {
         &self.id
     }
@@ -157,34 +177,39 @@ impl Game {
         self.state
     }
 
-    pub fn team_a_game_score(&self) -> Result<i32, SpadesError> {
+    /// Score for Team A (players 0 and 2) for the round just finished, valid at the end of each round.
+    pub fn team_a_individual_round_score(&self) -> Result<i32, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[0].game_points()),
         }
     }
 
-    pub fn team_b_game_score(&self) -> Result<i32, SpadesError> {
+    /// Score for Team B (players 1 and 3) for the round just finished, valid at the end of each round.
+    pub fn team_b_individual_round_score(&self) -> Result<i32, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[1].game_points()),
         }
     }
 
-    pub fn team_a_round_score(&self) -> Result<i32, SpadesError> {
+    /// Score for Team A (players 0 and 2) so far in the game, valid at the end of each round.
+    pub fn team_a_all_rounds_score(&self) -> Result<i32, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[0].cumulative_points()),
         }
     }
 
-    pub fn team_b_round_score(&self) -> Result<i32, SpadesError> {
+    /// Score for Team B (players 1 and 3) so far in the game, valid at the end of each round.
+    pub fn team_b_all_rounds_score(&self) -> Result<i32, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[1].cumulative_points()),
         }
     }
 
+    /// Number of tricks taken by Team A (players 0 and 2) for the round just completed.
     pub fn team_a_tricks(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
@@ -192,6 +217,7 @@ impl Game {
         }
     }
 
+    /// Number of tricks taken by Team B (players 1 and 3) for the round just completed.
     pub fn team_b_tricks(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
@@ -199,34 +225,41 @@ impl Game {
         }
     }
 
-    pub fn team_a_game_bags(&self) -> Result<u8, SpadesError> {
+    /// Number of bags (overtricks) taken by Team A (players 0 and 2) for the round just completed.
+    pub fn team_a_individual_round_bags(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[0].game_bags()),
         }
     }
 
-    pub fn team_b_game_bags(&self) -> Result<u8, SpadesError> {
+    /// Number of bags (overtricks) taken by Team B (players 1 and 3) for the round just completed.
+    pub fn team_b_individual_round_bags(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[1].game_bags()),
         }
     }
 
-    pub fn team_a_round_bags(&self) -> Result<u8, SpadesError> {
+    /// Number of bags (overtricks) taken by Team A (players 0 and 2) for all rounds completed.
+    /// Decremented by 10 when over 10, decreasing the overall score for this team.
+    pub fn team_a_all_rounds_bags(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[0].cumulative_bags()),
         }
     }
 
-    pub fn team_b_round_bags(&self) -> Result<u8, SpadesError> {
+    /// Number of bags (overtricks) taken by Team B (players 1 and 3) for all rounds completed.
+    /// Decremented by 10 when over 10, decreasing the overall score for this team.
+    pub fn team_b_all_rounds_bags(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[1].cumulative_bags()),
         }
     }
 
+    /// Obtain the uuid of the player expected to take the next game action.
     /// Returns `SpadesError` when the current game is not in the Betting or Trick stages.
     pub fn current_player_id(&self) -> Result<&Uuid, SpadesError> {
         match (&self.state, self.current_player_index) {
@@ -236,6 +269,7 @@ impl Game {
         }
     }
 
+    /// Obtain the set of cards in the hand of the player with the matching uuid.
     /// Returns a `SpadesError::InvalidUuid` if the game does not contain a player with the given `Uuid`.
     pub fn hand_from_player_id(&self, player_id: Uuid) -> Result<&Vec<Card>, SpadesError> {
         if player_id == self.player[0].id {
@@ -254,6 +288,8 @@ impl Game {
         Err(SpadesError::InvalidUuid)
     }
 
+    /// Obtain the set of cards in the hand of the player expected to take the next game action.
+    /// Once this is called for a player, they may not make a blind nil bid for that round.
     pub fn current_hand(&mut self) -> Result<&Vec<Card>, SpadesError> {
         match (&self.state, self.current_player_index) {
             (State::GameNotStarted, _) => Err(SpadesError::GameNotStarted),
@@ -265,6 +301,7 @@ impl Game {
         }
     }
 
+    /// The suit led for the current trick.
     pub fn leading_suit(&self) -> Result<Option<Suit>, SpadesError> {
         match &self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
@@ -274,6 +311,7 @@ impl Game {
         }
     }
 
+    // Obtain the uuids of the players on the team that won this game.
     pub fn winner_ids(&self) -> Result<(&Uuid, &Uuid), SpadesError> {
         match self.state {
             State::GameCompleted => {
@@ -289,13 +327,16 @@ impl Game {
         }
     }
 
+    // Obtain the bets that have been placed by each player for the current round.
     pub fn bets_placed(&self) -> Result<[Bet; 4], SpadesError> {
         Ok(self.bets_placed)
     }
 
-    /// Start -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
-    ///
+    /// Use this method to check whether the game is expecting start_game to be called next.
+    /// 
     /// If you want to check for errors:
+    /// 
+    /// let mut g = Game::default();
     /// if let Some(why_not) = g.can_start_game() {
     ///    // library user error
     /// } else {
@@ -312,6 +353,7 @@ impl Game {
         }
     }
 
+    /// Start the game, moving it into the betting stage.
     pub fn start_game(&mut self) {
         if let Some(_err) = self.can_start_game() {
             // don't do anything if can't start game
@@ -320,8 +362,11 @@ impl Game {
         }
     }
 
+    /// Use this method to know whether it is valid to make this bet.
+    /// 
     /// If you want to check for errors:
-    /// let bet: Bet = Bet::Amount(5);
+    /// let mut g = Game::default();
+    /// let bet = Bet::Amount(5);
     /// if let Some(why_not) = g.can_place_bet(bet) {
     ///    // library user error why_not of type SpadesError
     /// } else {
@@ -347,6 +392,7 @@ impl Game {
         }
     }
 
+    /// Make this bet for the current player.
     pub fn place_bet(&mut self, bet: Bet) -> Option<BetResult> {
         if let Some(_err) = self.can_place_bet(bet) {
             // don't do anything if can't make the bet
@@ -359,6 +405,8 @@ impl Game {
         }
     }
 
+    /// A method to determine whether a card may be played by the current player.
+    /// If it would not be possible, the reason why not will be returned in Some(SpadesError).
     pub fn can_play_card(&self, card: Card) -> Option<SpadesError> {
         match self.state {
             State::GameNotStarted => Some(SpadesError::GameNotStarted),
@@ -371,9 +419,12 @@ impl Game {
         }
     }
 
+    /// Play this card for the current player.
+    /// If the card is successfully played, it will return Some(PlayCardResult);
+    /// otherwise it will return None.
     pub fn play_card(&mut self, card: Card) -> Option<PlayCardResult> {
         if let Some(_err) = self.can_play_card(card) {
-            // don't do anything if can't make the bet
+            // don't do anything if can't play this card
             None
         } else if let State::Trick(rotation_status) = self.state {
             self.leading_suit = Some(card.suit);
@@ -425,7 +476,7 @@ impl Game {
         if rotation_status == 3 {
             let winner = self
                 .scoring
-                .trick(self.current_player_index, &self.current_trick);
+                .trick(self.current_player_index, &self.current_trick); // NOTE: Is this the right parameter value?  It ought to be whoever led the trick.
             self.current_trick.clear();
             if self.scoring.is_over() {
                 self.state = State::GameCompleted;
@@ -434,15 +485,15 @@ impl Game {
             if self.scoring.is_in_betting_stage() {
                 self.current_player_index = 0;
                 self.state = State::Betting((rotation_status + 1) % 4);
-                self.deal_cards();
+                self.deal_cards();       // NOTE: The deal should happen when move from Start to Betting
             } else {
-                self.current_player_index = winner;
-                self.state = State::Trick((rotation_status + 1) % 4); // TODO this should just be 0
+                self.current_player_index = winner; // the trick winner will lead on the next trick
+                self.state = State::Trick((rotation_status + 1) % 4);   // NOTE: Why not current_player_index?
             }
             PlayCardResult::TrickCompleted
         } else {
             self.current_player_index = (self.current_player_index + 1) % 4;
-            self.state = State::Trick((rotation_status + 1) % 4);
+            self.state = State::Trick((rotation_status + 1) % 4);   // NOTE: Why not current_player_index?
             PlayCardResult::CardPlayed
         }
     }
@@ -561,15 +612,15 @@ mod game_tests {
     #[test]
     fn test_queries_when_gamenotstarted() {
         let g = Game::default();
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_game_bags());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_game_score());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_round_bags());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_round_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_individual_round_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_individual_round_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_all_rounds_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_all_rounds_score());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_tricks());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_game_bags());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_game_score());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_round_bags());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_round_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_individual_round_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_individual_round_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_all_rounds_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_all_rounds_score());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_tricks());
     }
 
