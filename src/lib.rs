@@ -153,25 +153,31 @@ impl Game {
     }
 
     pub fn team_a_game_score(&self) -> Result<i32, SpadesError> {
-        match (&self.state, self.current_player_index) {
-            (State::GameNotStarted, _) => Err(SpadesError::GameNotStarted),
+        match self.state {
+            State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[0].game_points()),
         }
     }
 
     pub fn team_b_game_score(&self) -> Result<i32, SpadesError> {
-        match (&self.state, self.current_player_index) {
-            (State::GameNotStarted, _) => Err(SpadesError::GameNotStarted),
+        match self.state {
+            State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[1].game_points()),
         }
     }
 
-    pub fn team_a_round_score(&self) -> i32 {
-        self.scoring.team[0].cumulative_points()
+    pub fn team_a_round_score(&self) -> Result<i32, SpadesError> {
+        match self.state {
+            State::GameNotStarted => Err(SpadesError::GameNotStarted),
+            _ => Ok(self.scoring.team[0].cumulative_points())
+        }
     }
 
-    pub fn team_b_round_score(&self) -> i32 {
-        self.scoring.team[1].cumulative_points()
+    pub fn team_b_round_score(&self) -> Result<i32, SpadesError> {
+        match self.state {
+            State::GameNotStarted => Err(SpadesError::GameNotStarted),
+            _ => Ok(self.scoring.team[1].cumulative_points())
+        }
     }
 
     pub fn team_a_tricks(&self) -> Result<u8, SpadesError> {
@@ -541,13 +547,15 @@ mod game_tests {
     #[test]
     fn test_queries_when_gamenotstarted() {
         let g = Game::default();
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_game_score());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_game_bags());
-        assert_eq!(0, g.team_a_round_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_game_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_round_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_round_score());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_tricks());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_game_bags());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_game_score());
-        assert_eq!(0, g.team_b_round_score());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_round_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_round_score());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_tricks());
     }
 
