@@ -338,7 +338,7 @@ impl Game {
             State::Trick(_) => Some(SpadesError::ImproperGameStage),
             State::GameCompleted => Some(SpadesError::GameCompleted),
             State::Betting(_rotation_status) => {
-                if bet == Bet::BlindNil && self.player[self.current_player_index].seen_hand == true {
+                if bet == Bet::BlindNil && self.player[self.current_player_index].seen_hand {
                     Some(SpadesError::BetImproperSeenHand)
                 } else {
                     None
