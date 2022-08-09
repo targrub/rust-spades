@@ -234,7 +234,7 @@ impl Scoring {
     }
 
     pub fn trick(&mut self, starting_player_index: usize, cards: &Vec<Card>) -> usize {
-        let winner = get_trick_winner(starting_player_index, &cards);
+        let winner = get_trick_winner(starting_player_index, cards);
         self.players[winner].won_trick[self.trick] = true;
 
         if self.trick == 12 {
@@ -278,8 +278,8 @@ impl Scoring {
 
 #[cfg(test)]
 mod tests {
-    use super::{PlayerState, Scoring, TeamState};
     use super::Bet;
+    use super::{PlayerState, Scoring, TeamState};
 
     #[test]
     fn test_playerstate_new() {

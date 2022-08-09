@@ -45,23 +45,31 @@ mod scoring;
 #[cfg(test)]
 mod tests;
 
-pub use cards::Card as Card;
-pub use cards::Suit as Suit;
-pub use game_state::State as State;
-pub use result::SpadesError as SpadesError;
-pub use scoring::Bet as Bet;
+pub use cards::Card;
+pub use cards::Suit;
+pub use game_state::State;
+pub use result::SpadesError;
+pub use scoring::Bet;
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+pub enum BetResult {
+    #[default]
+    MadeBet,
+    CompletedBetting,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+pub enum PlayCardResult {
+    #[default]
+    CardPlayed,
+    TrickCompleted,
+    GameCompleted,
+}
 
 use uuid::Uuid;
 
-use result::{TransitionError, TransitionSuccess};
+use cards::{deal_four_players, new_deck};
 use scoring::Scoring;
-use cards::{new_deck, deal_four_players};
-
-enum GameAction {
-    Bet(Bet),
-    Card(Card),
-    Start,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 struct Player {
@@ -158,6 +166,14 @@ impl Game {
         }
     }
 
+    pub fn team_a_round_score(&self) -> i32 {
+        self.scoring.team[0].cumulative_points()
+    }
+
+    pub fn team_b_round_score(&self) -> i32 {
+        self.scoring.team[1].cumulative_points()
+    }
+
     pub fn team_a_tricks(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
@@ -172,17 +188,31 @@ impl Game {
         }
     }
 
-    pub fn team_a_bags(&self) -> Result<u8, SpadesError> {
+    pub fn team_a_game_bags(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[0].game_bags()),
         }
     }
 
-    pub fn team_b_bags(&self) -> Result<u8, SpadesError> {
+    pub fn team_b_game_bags(&self) -> Result<u8, SpadesError> {
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
             _ => Ok(self.scoring.team[1].game_bags()),
+        }
+    }
+
+    pub fn team_a_round_bags(&self) -> Result<u8, SpadesError> {
+        match self.state {
+            State::GameNotStarted => Err(SpadesError::GameNotStarted),
+            _ => Ok(self.scoring.team[0].cumulative_bags()),
+        }
+    }
+
+    pub fn team_b_round_bags(&self) -> Result<u8, SpadesError> {
+        match self.state {
+            State::GameNotStarted => Err(SpadesError::GameNotStarted),
+            _ => Ok(self.scoring.team[1].cumulative_bags()),
         }
     }
 
@@ -249,163 +279,178 @@ impl Game {
         Ok(self.bets_placed)
     }
 
+/// Start -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
+///
+/// If you want to check for errors:
+/// if let Some(why_not) = g.can_start_game() {
+///    // library user error
+/// } else {
+///  g.start_game();
+/// }
+///
+/// don't check for errors
+/// g.start_game();
+    pub fn can_start_game(&self) -> Option<SpadesError> {
+        if self.state == State::GameNotStarted {
+            None
+        } else {
+            Some(SpadesError::ImproperGameStage)
+        }
+    }
+
     pub fn start_game(&mut self) {
-        match self.execute_game_action(GameAction::Start) {
-            Ok(TransitionSuccess::Start) => { /* started game successfully */ }
-            Ok(_) => {
-                panic!("unexpected action");
-            }
-            Err(_) => {
-                panic!("error");
+        if let Some(_err) = self.can_start_game() {
+            // don't do anything if can't start game
+        } else {
+            self.execute_game_start();
+        }
+    }
+
+/// If you want to check for errors:
+/// let bet: Bet = Bet::Amount(5);
+/// if let Some(why_not) = g.can_place_bet(bet) {
+///    // library user error why_not of type SpadesError
+/// } else {
+///  if let Some(bet_result) = g.place_bet(bet) {
+///    // bet_result either BetResult::SuccessfulBet or BetResult::SuccessfulBetCompletedBetting
+///  }
+/// }
+/// If you don't want check for errors:
+/// let bet: Bet = Bet::Amount(5);
+/// g.place_bet(bet);
+    pub fn can_place_bet(&self) -> Option<SpadesError> {
+        match self.state {
+            State::GameNotStarted => Some(SpadesError::GameNotStarted),
+            State::Trick(_) => Some(SpadesError::ImproperGameStage),
+            State::Betting(_rotation_status) => None,
+            State::GameCompleted => Some(SpadesError::GameCompleted),
+        }
+    }
+
+    pub fn place_bet(&mut self, bet: Bet) -> Option<BetResult> {
+        if let Some(_err) = self.can_place_bet() {
+            // don't do anything if can't make the bet
+            None
+        } else if let State::Betting(rotation_status) = self.state {
+            let bet_result = self.execute_bet(rotation_status, bet);
+            Some(bet_result)
+        } else {
+            None
+        }
+    }
+
+    pub fn can_play_card(&self, card: Card) -> Option<SpadesError> {
+        match self.state {
+            State::GameNotStarted => Some(SpadesError::GameNotStarted),
+            State::GameCompleted => Some(SpadesError::GameCompleted),
+            State::Betting(_rotation_status) => Some(SpadesError::ImproperGameStage),
+            State::Trick(rotation_status) => {
+                let player_hand = &self.player[self.current_player_index].hand;
+                self.can_play_card_from_hand(rotation_status, card, player_hand)
             }
         }
     }
 
-    pub fn place_bet(&mut self, bet: Bet) -> Result<(), SpadesError> {
-        match self.execute_game_action(GameAction::Bet(bet)) {
-            Ok(TransitionSuccess::Bet) => {
-                /* made bet successfully */
-                Ok(())
-            }
-            Ok(TransitionSuccess::BetComplete) => {
-                /* last bet was made successfully */
-                Ok(())
-            }
-            Err(TransitionError::GameAlreadyStarted) => Err(SpadesError::ImproperGameStage),
-            Err(TransitionError::BetInCompletedGame) => Err(SpadesError::GameCompleted),
-            Err(TransitionError::BetNotInBettingStage) => Err(SpadesError::ImproperGameStage),
-            _ => Err(SpadesError::InternalError),
+    pub fn play_card(&mut self, card: Card) -> Option<PlayCardResult> {
+        if let Some(_err) = self.can_play_card(card) {
+            // don't do anything if can't make the bet
+            None
+        } else if let State::Trick(rotation_status) = self.state {
+            self.leading_suit = Some(card.suit);
+            let card_index = self.player[self.current_player_index]
+                .hand
+                .iter()
+                .position(|x| x == &card)
+                .unwrap();
+            self.deck.push(
+                self.player[self.current_player_index]
+                    .hand
+                    .remove(card_index),
+            );
+
+            let card_result = self.execute_play_card(rotation_status, card);
+            Some(card_result)
+        } else {
+            None
         }
     }
 
-    pub fn play_card(&mut self, card_played: Card) -> Result<(), SpadesError> {
-        match self.execute_game_action(GameAction::Card(card_played)) {
-            Ok(TransitionSuccess::PlayCard) => {
-                /* card played successfully */
-                Ok(())
-            }
-            Ok(TransitionSuccess::Trick) => {
-                /* card played successfully; trick now over */
-                Ok(())
-            }
-            Ok(TransitionSuccess::GameOver) => {
-                /* card played successfully; game now over */
-                Ok(())
-            }
-            Err(TransitionError::CardIncorrectSuit) => Err(SpadesError::CardIncorrectSuit),
-            Err(TransitionError::CardNotInHand) => Err(SpadesError::CardNotInHand),
-            Err(TransitionError::CardInBettingStage) => Err(SpadesError::ImproperGameStage),
-            Err(TransitionError::CardInCompletedGame) => Err(SpadesError::GameCompleted),
-            _ => Err(SpadesError::InternalError),
+    fn execute_game_start(&mut self) {
+        self.spades_broken = false;
+        self.deal_cards();
+        self.state = State::Betting(0);
+    }
+
+    fn execute_bet(&mut self, rotation_status: usize, bet: Bet) -> BetResult {
+        self.scoring.add_bet(self.current_player_index, bet);
+        if rotation_status == 3 {
+            self.scoring.betting_over();
+            self.state = State::Trick((rotation_status + 1) % 4);
+            self.current_player_index = 0;
+            BetResult::CompletedBetting
+        } else {
+            self.current_player_index = (self.current_player_index + 1) % 4;
+            self.state = State::Betting((rotation_status + 1) % 4);
+            BetResult::MadeBet
         }
     }
 
-    /// The primary function used to progress the game state.
-    /// The stages and player rotations are managed internally.
-    /// The order of `GameAction` arguments should be:
-    /// Start -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> Card * 4 * 13 -> Bet * 4 -> ...
-    fn execute_game_action(
-        &mut self,
-        entry: GameAction,
-    ) -> Result<TransitionSuccess, TransitionError> {
-        match entry {
-            GameAction::Bet(bet) => match self.state {
-                State::GameNotStarted | State::Trick(_) | State::GameCompleted => {
-                    Err(TransitionError::BetNotInBettingStage)
-                }
-                State::Betting(rotation_status) => {
-                    self.scoring.add_bet(self.current_player_index, bet);
-                    if rotation_status == 3 {
-                        self.scoring.betting_over();
-                        self.state = State::Trick((rotation_status + 1) % 4);
-                        self.current_player_index = 0;
-                        return Ok(TransitionSuccess::BetComplete);
-                    } else {
-                        self.current_player_index = (self.current_player_index + 1) % 4;
-                        self.state = State::Betting((rotation_status + 1) % 4);
-                    }
+    fn execute_play_card(&mut self, rotation_status: usize, card: Card) -> PlayCardResult {
+        if card.suit == Suit::Spade {
+            self.spades_broken = true;
+        }
 
-                    Ok(TransitionSuccess::Bet)
-                }
-            },
-            GameAction::Card(card) => {
-                match self.state {
-                    State::GameNotStarted => Err(TransitionError::GameNotStarted),
-                    State::GameCompleted => Err(TransitionError::CardInCompletedGame),
-                    State::Betting(_rotation_status) => Err(TransitionError::CardInBettingStage),
-                    State::Trick(rotation_status) => {
-                        {
-                            let player_hand = &mut self.player[self.current_player_index].hand;
+        self.current_trick.push(card);
 
-                            if !player_hand.contains(&card) {
-                                return Err(TransitionError::CardNotInHand);
-                            }
-                            let leading_suit = self.leading_suit;
-                            if rotation_status == 0 {
-                                self.leading_suit = Some(card.suit);
-                                // to lead spades, spades must be broken OR only have spades in this hand
-                                if card.suit == Suit::Spade {
-                                    if self.spades_broken
-                                        || !player_hand.iter().any(|c| c.suit != Suit::Spade)
-                                    {
-                                    } else {
-                                        return Err(TransitionError::CardIncorrectSuit);
-                                    }
-                                }
-                            }
-                            if self.leading_suit != Some(card.suit)
-                                && player_hand.iter().any(|x| Some(x.suit) == leading_suit)
-                            {
-                                return Err(TransitionError::CardIncorrectSuit);
-                            }
-
-                            if card.suit == Suit::Spade {
-                                self.spades_broken = true;
-                            }
-
-                            let card_index = player_hand.iter().position(|x| x == &card).unwrap();
-                            self.deck.push(player_hand.remove(card_index));
-                        }
-
-                        self.current_trick.push(card);
-
-                        if rotation_status == 3 {
-                            let winner = self.scoring.trick(
-                                self.current_player_index,
-                                &self.current_trick,
-                            );
-                            self.current_trick.clear();
-                            if self.scoring.is_over() {
-                                self.state = State::GameCompleted;
-                                return Ok(TransitionSuccess::GameOver);
-                            }
-                            if self.scoring.is_in_betting_stage() {
-                                self.current_player_index = 0;
-                                self.state = State::Betting((rotation_status + 1) % 4);
-                                self.deal_cards();
-                            } else {
-                                self.current_player_index = winner;
-                                self.state = State::Trick((rotation_status + 1) % 4); // TODO this should just be 0
-                            }
-                            Ok(TransitionSuccess::Trick)
-                        } else {
-                            self.current_player_index = (self.current_player_index + 1) % 4;
-                            self.state = State::Trick((rotation_status + 1) % 4);
-                            Ok(TransitionSuccess::PlayCard)
-                        }
-                    }
-                }
+        if rotation_status == 3 {
+            let winner = self
+                .scoring
+                .trick(self.current_player_index, &self.current_trick);
+            self.current_trick.clear();
+            if self.scoring.is_over() {
+                self.state = State::GameCompleted;
+                return PlayCardResult::GameCompleted;
             }
-            GameAction::Start => {
-                if self.state != State::GameNotStarted {
-                    return Err(TransitionError::GameAlreadyStarted);
-                }
-                self.spades_broken = false;
+            if self.scoring.is_in_betting_stage() {
+                self.current_player_index = 0;
+                self.state = State::Betting((rotation_status + 1) % 4);
                 self.deal_cards();
-                self.state = State::Betting(0);
-                Ok(TransitionSuccess::Start)
+            } else {
+                self.current_player_index = winner;
+                self.state = State::Trick((rotation_status + 1) % 4); // TODO this should just be 0
+            }
+            PlayCardResult::TrickCompleted
+        } else {
+            self.current_player_index = (self.current_player_index + 1) % 4;
+            self.state = State::Trick((rotation_status + 1) % 4);
+            PlayCardResult::CardPlayed
+        }
+    }
+
+    fn can_play_card_from_hand(
+        &self,
+        rotation_status: usize,
+        card: Card,
+        hand: &[Card],
+    ) -> Option<SpadesError> {
+        if !hand.contains(&card) {
+            return Some(SpadesError::CardNotInHand);
+        }
+        let leading_suit = self.leading_suit;
+        if rotation_status == 0 {
+            // to lead spades, spades must be broken OR only have spades in this hand
+            if card.suit == Suit::Spade {
+                if self.spades_broken || !hand.iter().any(|c| c.suit != Suit::Spade) {
+                } else {
+                    return Some(SpadesError::CardIncorrectSuit);
+                }
             }
         }
+        if self.leading_suit != Some(card.suit) && hand.iter().any(|x| Some(x.suit) == leading_suit)
+        {
+            return Some(SpadesError::CardIncorrectSuit);
+        }
+        None
     }
 
     fn deal_cards(&mut self) {
@@ -426,26 +471,19 @@ impl Game {
     pub fn is_over(&self) -> bool {
         self.scoring.is_over()
     }
-
-    pub fn team_a_round_score(&self) -> i32 {
-        self.scoring.team[0].cumulative_points()
-    }
-
-    pub fn team_b_round_score(&self) -> i32 {
-        self.scoring.team[1].cumulative_points()
-    }
 }
-
 
 #[cfg(test)]
 mod game_tests {
 
-#![allow(unused_variables)]
+    #![allow(unused_variables)]
 
-use Game;
-use State;
-use SpadesError;
-use Bet;
+    use Bet;
+    use Game;
+    use SpadesError;
+    use State;
+
+    use crate::{BetResult, PlayCardResult};
 
     #[test]
     fn test_create_game() {
@@ -504,10 +542,10 @@ use Bet;
     fn test_queries_when_gamenotstarted() {
         let g = Game::default();
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_game_score());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_game_bags());
         assert_eq!(0, g.team_a_round_score());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_tricks());
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_game_bags());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_game_score());
         assert_eq!(0, g.team_b_round_score());
         assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_tricks());
@@ -527,24 +565,24 @@ use Bet;
         g.start_game();
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p1_uuid), cpi_response);
-        let mut action_response = g.place_bet(Bet::Amount(3));
-        assert_eq!(Ok(()), action_response);
+        let mut bet_action_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Some(BetResult::MadeBet), bet_action_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p2_uuid), cpi_response);
-        action_response = g.place_bet(Bet::Amount(3));
-        assert_eq!(Ok(()), action_response);
+        bet_action_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Some(BetResult::MadeBet), bet_action_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p3_uuid), cpi_response);
-        action_response = g.place_bet(Bet::Amount(3));
-        assert_eq!(Ok(()), action_response);
+        bet_action_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Some(BetResult::MadeBet), bet_action_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p4_uuid), cpi_response);
-        action_response = g.place_bet(Bet::Amount(3));
-        assert_eq!(Ok(()), action_response);
+        bet_action_response = g.place_bet(Bet::Amount(3));
+        assert_eq!(Some(BetResult::CompletedBetting), bet_action_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p1_uuid), cpi_response);
-        action_response = g.play_card(g.current_hand().unwrap()[0]);
-        assert_eq!(Ok(()), action_response);
+        let play_card_action_response = g.play_card(g.current_hand().unwrap()[0]);
+        assert_eq!(Some(PlayCardResult::CardPlayed), play_card_action_response);
         cpi_response = g.current_player_id();
         assert_eq!(Ok(&p2_uuid), cpi_response);
     }
@@ -571,8 +609,6 @@ use Bet;
         if let Ok(p1_hand) = p1_hand_result {
             assert_eq!(13, p1_hand.len());
         } else {
-
         }
     }
-
 }

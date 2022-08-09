@@ -208,7 +208,7 @@ pub fn deal_four_players(cards: &mut Vec<Card>) -> Vec<Vec<Card>> {
 
 #[cfg(test)]
 mod suit_tests {
-use super::Suit;
+    use super::Suit;
 
     #[test]
     fn test_from_u8_to_suit() {
@@ -221,13 +221,13 @@ use super::Suit;
     }
 
     #[test]
-    #[should_panic(expected="illegal suit")]
+    #[should_panic(expected = "illegal suit")]
     fn test_from_0_to_suit_panics() {
         let s: Suit = 0u8.into();
     }
 
     #[test]
-    #[should_panic(expected="illegal suit")]
+    #[should_panic(expected = "illegal suit")]
     fn test_from_5_to_suit_panics() {
         let s: Suit = 5u8.into();
     }
@@ -236,7 +236,7 @@ use super::Suit;
 #[cfg(test)]
 mod rank_tests {
 
-use cards::Rank;
+    use cards::Rank;
 
     #[test]
     fn test_from_u8_to_rank() {
@@ -246,33 +246,30 @@ use cards::Rank;
         assert_eq!(Rank::Ten, 10u8.into());
         assert_eq!(Rank::Two, 2u8.into());
     }
-    
+
     #[test]
-    #[should_panic(expected="illegal rank")]
+    #[should_panic(expected = "illegal rank")]
     fn test_from_0_to_rank() {
         let r: Rank = 0u8.into();
     }
 
     #[test]
-    #[should_panic(expected="illegal rank")]
+    #[should_panic(expected = "illegal rank")]
     fn test_from_1_to_rank() {
         let r: Rank = 1u8.into();
     }
 
     #[test]
-    #[should_panic(expected="illegal rank")]
+    #[should_panic(expected = "illegal rank")]
     fn test_from_15_to_rank() {
         let r: Rank = 15u8.into();
     }
-    
 }
 
 #[cfg(test)]
 mod tests {
 
-    use cards::{
-        deal_four_players, get_trick_winner, new_deck, shuffle, Card, Rank, Suit,
-    };
+    use cards::{deal_four_players, get_trick_winner, new_deck, shuffle, Card, Rank, Suit};
     use std::fmt;
 
     #[test]

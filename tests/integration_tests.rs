@@ -31,25 +31,30 @@ fn main() {
             let leading_suit_opt = g.leading_suit().unwrap();
             let x = get_valid_card_index(leading_suit_opt, &hand);
 
-            if let Ok(response) = g.play_card(hand[x].clone()) {
-                // we're good
-            } else {
+            if let Some(response) = g.can_play_card(hand[x].clone()) {
                 // first choice failed, so we'll try each card until one works
                 let mut worked = false;
                 let mut y = (x + 1) % hand.len();
                 for y in (x + 1)..hand.len() {
-                    if let Ok(response) = g.play_card(hand[y].clone()) {
+                    if let Some(response) = g.can_play_card(hand[y].clone()) {
+                    } else {
+                        g.play_card(hand[y].clone());
                         worked = true;
                         break;
                     }
                 }
                 if !worked {
                     for y in 0..hand.len() {
-                        if let Ok(response) = g.play_card(hand[y].clone()) {
+                        if let Some(response) = g.can_play_card(hand[y].clone()) {
+                        } else {
+                            g.play_card(hand[y].clone());
                             break;
                         }
                     }
                 }
+            } else {
+                // we're good
+                g.play_card(hand[x].clone());
             }
         } else {
             g.place_bet(Bet::Amount(3));
@@ -59,7 +64,7 @@ fn main() {
 }
 
 pub fn get_valid_card_index(leading_suit: Option<Suit>, hand: &Vec<Card>) -> usize {
-    if hand.iter().any(|ref x| Some(x.suit) == leading_suit)  {
+    if hand.iter().any(|ref x| Some(x.suit) == leading_suit) {
         hand.iter()
             .position(|ref x| Some(x.suit) == leading_suit)
             .unwrap()

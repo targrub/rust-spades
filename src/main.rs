@@ -48,15 +48,13 @@ fn play_complete_round(g: &mut Game) {
                 g.start_game();
             }
             State::Betting(_player_index) => {
-                if g.place_bet(Bet::Amount(3)).is_err() {
-                    panic!("internal logic error");
-                }
+                g.place_bet(Bet::Amount(3));
             }
             State::Trick(_player_index) => {
                 let hand = g.current_hand().unwrap().clone();
                 let mut times_through = 0;
                 let mut last_choice = None;
-                let mut last_err = Ok(());
+                let mut last_err = None;
                 loop {
                     times_through += 1;
                     if times_through > 1000 {
@@ -69,14 +67,15 @@ fn play_complete_round(g: &mut Game) {
                     if let Some(random_card) = rng.choose(hand.as_slice()) {
                         // println!("player {} plays {}{}", playerindex, random_card.rank, random_card.suit);
                         last_choice = Some(*random_card);
-                        last_err = g.play_card(*random_card);
-                        if last_err.is_ok() {
-                            break;
-                        } else {
+                        if let Some(err) = g.can_play_card(*random_card) {
                             // we're assuming the error was SpadesError::CardIncorrectSuit
                             // println!("player {} tried to play {}{}, but it was the incorrect suit", playerindex, random_card.rank, random_card.suit);
+                            last_err = Some(err);
                             continue;
-                        } // randomly chosen card was wrong suit, choose another card
+                        } else {
+                            g.play_card(*random_card);
+                            break;
+                        }
                     } else {
                         panic!("no valid card can be chosen");
                     }
