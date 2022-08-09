@@ -9,10 +9,10 @@ use std::fmt::{self, Display};
 #[derive(Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
 pub enum Suit {
     #[default]
-    Club = 1,
-    Diamond = 2,
-    Heart = 3,
-    Spade = 4,
+    Club = 0,
+    Diamond = 1,
+    Heart = 2,
+    Spade = 3,
 }
 
 impl fmt::Display for Suit {
@@ -29,10 +29,10 @@ impl fmt::Display for Suit {
 impl From<u8> for Suit {
     fn from(f: u8) -> Self {
         match f {
-            1 => Suit::Club,
-            2 => Suit::Diamond,
-            3 => Suit::Heart,
-            4 => Suit::Spade,
+            0 => Suit::Club,
+            1 => Suit::Diamond,
+            2 => Suit::Heart,
+            3 => Suit::Spade,
             _ => panic!("illegal suit"),
         }
     }
@@ -212,18 +212,18 @@ mod suit_tests {
 
     #[test]
     fn test_from_u8_to_suit() {
-        let mut s: Suit = 3u8.into();
+        let mut s: Suit = 2u8.into();
         assert_eq!(Suit::Heart, s);
-        assert_eq!(Suit::Club, 1u8.into());
-        assert_eq!(Suit::Diamond, 2u8.into());
-        assert_eq!(Suit::Heart, 3u8.into());
-        assert_eq!(Suit::Spade, 4u8.into());
+        assert_eq!(Suit::Club, 0u8.into());
+        assert_eq!(Suit::Diamond, 1u8.into());
+        assert_eq!(Suit::Heart, 2u8.into());
+        assert_eq!(Suit::Spade, 3u8.into());
     }
 
     #[test]
     #[should_panic(expected = "illegal suit")]
-    fn test_from_0_to_suit_panics() {
-        let s: Suit = 0u8.into();
+    fn test_from_4_to_suit_panics() {
+        let s: Suit = 4u8.into();
     }
 
     #[test]
