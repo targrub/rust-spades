@@ -2,7 +2,9 @@ use cards::{get_trick_winner, Card};
 use std::fmt;
 
 /// Used as an argument to [Game::place_bet](struct.Game.html#method.place_bet).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Bet {
     Amount(u8),
     Nil,

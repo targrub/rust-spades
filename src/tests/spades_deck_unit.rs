@@ -41,9 +41,9 @@ fn trick_winner_same_suit() {
 
     let trick = vec![a, b, c, d];
     assert_eq!(1, get_trick_winner(0, &trick));
-    assert_eq!(1, get_trick_winner(1, &trick));
-    assert_eq!(1, get_trick_winner(2, &trick));
-    assert_eq!(1, get_trick_winner(3, &trick));
+    assert_eq!(2, get_trick_winner(1, &trick));
+    assert_eq!(3, get_trick_winner(2, &trick));
+    assert_eq!(0, get_trick_winner(3, &trick));
 }
 
 #[test]
@@ -68,9 +68,9 @@ fn trick_winner_no_spades() {
     let trick = vec![a, b, c, d];
 
     assert_eq!(3, get_trick_winner(0, &trick));
-    assert_eq!(1, get_trick_winner(1, &trick));
+    assert_eq!(0, get_trick_winner(1, &trick));
     assert_eq!(1, get_trick_winner(2, &trick));
-    assert_eq!(3, get_trick_winner(3, &trick));
+    assert_eq!(2, get_trick_winner(3, &trick));
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn trick_winner_spades() {
     let trick = vec![a, b, c, d];
 
     assert_eq!(2, get_trick_winner(0, &trick));
-    assert_eq!(2, get_trick_winner(1, &trick));
-    assert_eq!(2, get_trick_winner(2, &trick));
-    assert_eq!(2, get_trick_winner(3, &trick));
+    assert_eq!(3, get_trick_winner(1, &trick));
+    assert_eq!(0, get_trick_winner(2, &trick));
+    assert_eq!(1, get_trick_winner(3, &trick));
 }

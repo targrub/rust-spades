@@ -1,24 +1,14 @@
 extern crate spades;
 
 extern crate rand;
-extern crate uuid;
 
 use rand::thread_rng;
-use spades::{Bet, Card, Game, State, Suit};
+use spades::{Bet, Card, Game, State, Suit, Uid};
 
 #[test]
 #[allow(unused)]
 fn main() {
-    let mut g = Game::new(
-        uuid::Uuid::new_v4(),
-        [
-            uuid::Uuid::new_v4(),
-            uuid::Uuid::new_v4(),
-            uuid::Uuid::new_v4(),
-            uuid::Uuid::new_v4(),
-        ],
-        500,
-    );
+    let mut g = Game::new(Uid(777), [Uid(1000), Uid(2000), Uid(2001), Uid(1999)], 500);
 
     g.start_game();
     while g.state() != State::GameCompleted {

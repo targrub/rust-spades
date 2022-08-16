@@ -18,10 +18,10 @@ pub enum Suit {
 impl fmt::Display for Suit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Suit::Club => write!(f, "\u{2667}"),
-            Suit::Diamond => write!(f, "\u{2662}"),
-            Suit::Heart => write!(f, "\u{2661}"),
-            Suit::Spade => write!(f, "\u{2664}"),
+            Suit::Club => write!(f, "\u{2663}"),
+            Suit::Diamond => write!(f, "\u{2666}"),
+            Suit::Heart => write!(f, "\u{2665}"),
+            Suit::Spade => write!(f, "\u{2660}"),
         }
     }
 }
@@ -112,7 +112,7 @@ impl Card {
 
 impl fmt::Display for Card {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?} {:?}", self.rank, self.suit)
+        write!(f, "{}{}", self.rank, self.suit)
     }
 }
 
@@ -132,6 +132,54 @@ impl PartialOrd for Card {
     }
 }
 
+impl serde::Serialize for Card {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u8(self.rank as u8 + 15 * (self.suit as u8))
+    }
+}
+
+struct U8Visitor;
+
+impl<'de> serde::de::Visitor<'de> for U8Visitor {
+    type Value = Card;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("an integer between 2 and 62")
+    }
+
+    fn visit_u8<E>(self, value: u8) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Card {
+            rank: (value % 15).into(),
+            suit: (value / 15).into(),
+        })
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Card {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_u8(U8Visitor)
+    }
+}
+
+#[test]
+fn test_ser_de() {
+    let mut card = Card::new(Suit::Diamond, Rank::King);
+    serde_test::assert_tokens(&card, &[serde_test::Token::U8(15 + 13)]);
+    card = Card::new(Suit::Club, Rank::Two);
+    serde_test::assert_tokens(&card, &[serde_test::Token::U8(0 + 2)]);
+    card = Card::new(Suit::Spade, Rank::Ace);
+    serde_test::assert_tokens(&card, &[serde_test::Token::U8(15 * 3 + 14)]);
+}
+
 /// Given four cards and a starting card, returns the winner of a trick.
 ///
 /// The rules used to determine the winner of a trick are as follows:
@@ -141,8 +189,8 @@ impl PartialOrd for Card {
 /// Note: assumes leading card is valid (e.g., if non-spade led and not broken spades, this method doesn't care)
 pub fn get_trick_winner(leading_player_index: usize, others: &Vec<Card>) -> usize {
     assert_eq!(4, others.len());
-    let mut winning_index = leading_player_index;
-    let mut best_card = others[leading_player_index];
+    let mut winning_index = 0;
+    let mut best_card = others[0];
     for (i, other) in others.iter().enumerate() {
         if other.suit == best_card.suit {
             if other.rank as u8 > best_card.rank as u8 {
@@ -154,7 +202,7 @@ pub fn get_trick_winner(leading_player_index: usize, others: &Vec<Card>) -> usiz
             winning_index = i;
         }
     }
-    winning_index
+    (winning_index + leading_player_index) % 4
 }
 
 /// Returns a shuffled deck of [`deck::Card`](struct.Card.html)'s, with 52 elements.
@@ -280,7 +328,10 @@ mod tests {
         let jd = Card::new(Suit::Diamond, Rank::Jack);
         let c2d = Card::new(Suit::Diamond, Rank::Two);
         let c3d = Card::new(Suit::Diamond, Rank::Three);
-        let mut cards = [ah, ks, qc, jd, c2d];
+        let c4d = Card::new(Suit::Diamond, Rank::Four);
+        let c5d = Card::new(Suit::Diamond, Rank::Five);
+        let c6d = Card::new(Suit::Diamond, Rank::Six); // NOTE! not in cards vec
+        let mut cards = [ah, ks, qc, jd, c2d, c3d, c4d, c5d];
         let the_copy = cards;
         let the_clone = cards.clone();
         assert_eq!(cards, the_copy);
@@ -291,7 +342,10 @@ mod tests {
         assert!(cards.contains(&qc));
         assert!(cards.contains(&jd));
         assert!(cards.contains(&c2d));
-        assert!(!cards.contains(&c3d));
+        assert!(cards.contains(&c3d));
+        assert!(cards.contains(&c4d));
+        assert!(cards.contains(&c5d));
+        assert!(!cards.contains(&c6d));
         assert_ne!(cards, the_copy);
         assert_ne!(cards, the_clone);
     }
@@ -303,11 +357,11 @@ mod tests {
         let qc = Card::new(Suit::Club, Rank::Queen);
         let jd = Card::new(Suit::Diamond, Rank::Jack);
         let c2d = Card::new(Suit::Diamond, Rank::Two);
-        assert_eq!(ah.to_string(), "Ace Heart".to_string());
-        assert_eq!(ks.to_string(), "King Spade".to_string());
-        assert_eq!(qc.to_string(), "Queen Club".to_string());
-        assert_eq!(jd.to_string(), "Jack Diamond".to_string());
-        assert_eq!(c2d.to_string(), "Two Diamond".to_string());
+        assert_eq!(ah.to_string(), "A\u{2665}".to_string());
+        assert_eq!(ks.to_string(), "K\u{2660}".to_string());
+        assert_eq!(qc.to_string(), "Q\u{2663}".to_string());
+        assert_eq!(jd.to_string(), "J\u{2666}".to_string());
+        assert_eq!(c2d.to_string(), "2\u{2666}".to_string());
     }
 
     #[test]
@@ -383,32 +437,32 @@ mod tests {
 
         let hand1 = vec![c2d, c3d, jd, qc];
         assert_eq!(2, get_trick_winner(0, &hand1));
-        assert_eq!(2, get_trick_winner(1, &hand1));
-        assert_eq!(2, get_trick_winner(2, &hand1));
-        assert_eq!(3, get_trick_winner(3, &hand1));
+        assert_eq!(3, get_trick_winner(1, &hand1));
+        assert_eq!(0, get_trick_winner(2, &hand1));
+        assert_eq!(1, get_trick_winner(3, &hand1));
 
         let hand2 = vec![ah, ks, qc, jd];
         assert_eq!(1, get_trick_winner(0, &hand2));
-        assert_eq!(1, get_trick_winner(1, &hand2));
-        assert_eq!(1, get_trick_winner(2, &hand2));
-        assert_eq!(1, get_trick_winner(3, &hand2));
+        assert_eq!(2, get_trick_winner(1, &hand2));
+        assert_eq!(3, get_trick_winner(2, &hand2));
+        assert_eq!(0, get_trick_winner(3, &hand2));
 
-        let hand3 = vec![ah, c3d, qc, jd];
-        assert_eq!(0, get_trick_winner(0, &hand3));
+        let hand3 = vec![c3d, qc, jd, ah];
+        assert_eq!(2, get_trick_winner(0, &hand3));
         assert_eq!(3, get_trick_winner(1, &hand3));
-        assert_eq!(2, get_trick_winner(2, &hand3));
-        assert_eq!(3, get_trick_winner(3, &hand3));
+        assert_eq!(0, get_trick_winner(2, &hand3));
+        assert_eq!(1, get_trick_winner(3, &hand3));
 
         let hand4 = vec![ah, c3s, qc, jd];
         assert_eq!(1, get_trick_winner(0, &hand4));
-        assert_eq!(1, get_trick_winner(1, &hand4));
-        assert_eq!(1, get_trick_winner(2, &hand4));
-        assert_eq!(1, get_trick_winner(3, &hand4));
+        assert_eq!(2, get_trick_winner(1, &hand4));
+        assert_eq!(3, get_trick_winner(2, &hand4));
+        assert_eq!(0, get_trick_winner(3, &hand4));
 
         let hand5 = vec![ks, c3s, qc, jd];
         assert_eq!(0, get_trick_winner(0, &hand5));
-        assert_eq!(0, get_trick_winner(1, &hand5));
-        assert_eq!(0, get_trick_winner(2, &hand5));
-        assert_eq!(0, get_trick_winner(3, &hand5));
+        assert_eq!(1, get_trick_winner(1, &hand5));
+        assert_eq!(2, get_trick_winner(2, &hand5));
+        assert_eq!(3, get_trick_winner(3, &hand5));
     }
 }

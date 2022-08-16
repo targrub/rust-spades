@@ -1,24 +1,16 @@
 extern crate rand;
 extern crate spades;
-extern crate uuid;
 
 use rand::{thread_rng, Rng};
-use spades::{Bet, Game, State};
+use spades::{Bet, Game, State, Uid};
 
 fn main() {
+    let game_id = Uid(12345);
+    let player_ids = [Uid(1), Uid(2), Uid(3), Uid(4)];
     for _r in 0..1000 {
         // rounds
         //println!("round {}", r + 1);
-        let mut g = Game::new(
-            uuid::Uuid::new_v4(),
-            [
-                uuid::Uuid::new_v4(),
-                uuid::Uuid::new_v4(),
-                uuid::Uuid::new_v4(),
-                uuid::Uuid::new_v4(),
-            ],
-            500,
-        );
+        let mut g = Game::new(game_id, player_ids, 500);
         play_complete_round(&mut g);
         /*
         println!("winners of final game: {:?}", g.get_winner_ids().unwrap());
