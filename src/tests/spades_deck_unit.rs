@@ -9,9 +9,6 @@ fn new_deck() {
 #[test]
 fn deal_deck_four_players() {
     let mut x = cards::new_deck();
-    let y = x[0].suit.clone();
-
-    println!("{:?}", y as u8);
 
     let hands = deal_four_players(&mut x);
     assert_eq!(hands[0].len(), 13);

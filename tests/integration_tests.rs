@@ -60,17 +60,14 @@ pub fn get_valid_card_index(leading_suit: Option<Suit>, hand: &Vec<Card>) -> usi
             .unwrap()
     } else {
         if let Some(card_index) = hand.iter().position(|c| c.suit == Suit::Spade) {
-            //println!("try {:?}", hand[card_index]);
             card_index
         } else {
             if let Some(card_index) = hand
                 .iter()
                 .position(|c| c.suit != Suit::Spade && Some(c.suit) != leading_suit)
             {
-                //println!("try {:?}", hand[card_index]);
                 card_index
             } else {
-                //println!("ran out of options");
                 0
             }
         }

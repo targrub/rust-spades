@@ -209,85 +209,49 @@ impl Game {
         self.state
     }
 
-    /// Score for Team A (players 0 and 2) for the round just finished, valid at the end of each round.
-    pub fn team_a_individual_round_score(&self) -> Result<i32, SpadesError> {
+    /// Score for Team 0 (players 0 and 2) or Team 1 (players 1 and 3) for the round just finished, valid at the end of each round.
+    pub fn team_individual_round_score(&self, team_id: usize) -> Result<i32, SpadesError> {
+        assert!(team_id == 0 || team_id == 1);
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[0].game_points()),
+            _ => Ok(self.scoring.team[team_id].game_points()),
         }
     }
 
-    /// Score for Team B (players 1 and 3) for the round just finished, valid at the end of each round.
-    pub fn team_b_individual_round_score(&self) -> Result<i32, SpadesError> {
+    /// Score for Team 0 (players 0 and 2) or Team 1 (players 1 and 3) so far in the game, valid at the end of each round.
+    pub fn team_all_rounds_score(&self, team_id: usize) -> Result<i32, SpadesError> {
+        assert!(team_id == 0 || team_id == 1);
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[1].game_points()),
+            _ => Ok(self.scoring.team[team_id].cumulative_points()),
         }
     }
 
-    /// Score for Team A (players 0 and 2) so far in the game, valid at the end of each round.
-    pub fn team_a_all_rounds_score(&self) -> Result<i32, SpadesError> {
+    /// Number of tricks taken by Team 0 (players 0 and 2) or Team 1 (players 1 and 3) for the round just completed.
+    pub fn team_tricks_won(&self, team_id: usize) -> Result<u8, SpadesError> {
+        assert!(team_id == 0 || team_id == 1);
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[0].cumulative_points()),
+            _ => Ok(self.scoring.team[team_id].tricks_won()),
         }
     }
 
-    /// Score for Team B (players 1 and 3) so far in the game, valid at the end of each round.
-    pub fn team_b_all_rounds_score(&self) -> Result<i32, SpadesError> {
+    /// Number of bags (overtricks) taken by Team 0 (players 0 and 2) or Team 1 (players 1 and 3) for the round just completed.
+    pub fn team_individual_round_bags(&self, team_id: usize) -> Result<u8, SpadesError> {
+        assert!(team_id == 0 || team_id == 1);
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[1].cumulative_points()),
+            _ => Ok(self.scoring.team[team_id].game_bags()),
         }
     }
 
-    /// Number of tricks taken by Team A (players 0 and 2) for the round just completed.
-    pub fn team_a_tricks(&self) -> Result<u8, SpadesError> {
-        match self.state {
-            State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[0].tricks_won()),
-        }
-    }
-
-    /// Number of tricks taken by Team B (players 1 and 3) for the round just completed.
-    pub fn team_b_tricks(&self) -> Result<u8, SpadesError> {
-        match self.state {
-            State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[1].tricks_won()),
-        }
-    }
-
-    /// Number of bags (overtricks) taken by Team A (players 0 and 2) for the round just completed.
-    pub fn team_a_individual_round_bags(&self) -> Result<u8, SpadesError> {
-        match self.state {
-            State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[0].game_bags()),
-        }
-    }
-
-    /// Number of bags (overtricks) taken by Team B (players 1 and 3) for the round just completed.
-    pub fn team_b_individual_round_bags(&self) -> Result<u8, SpadesError> {
-        match self.state {
-            State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[1].game_bags()),
-        }
-    }
-
-    /// Number of bags (overtricks) taken by Team A (players 0 and 2) for all rounds completed.
+    /// Number of bags (overtricks) taken by Team 0 (players 0 and 2) or Team 1 (players 1 and 3) for all rounds completed.
     /// Decremented by 10 when over 10, decreasing the overall score for this team.
-    pub fn team_a_all_rounds_bags(&self) -> Result<u8, SpadesError> {
+    pub fn team_all_rounds_bags(&self, team_id: usize) -> Result<u8, SpadesError> {
+        assert!(team_id == 0 || team_id == 1);
         match self.state {
             State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[0].cumulative_bags()),
-        }
-    }
-
-    /// Number of bags (overtricks) taken by Team B (players 1 and 3) for all rounds completed.
-    /// Decremented by 10 when over 10, decreasing the overall score for this team.
-    pub fn team_b_all_rounds_bags(&self) -> Result<u8, SpadesError> {
-        match self.state {
-            State::GameNotStarted => Err(SpadesError::GameNotStarted),
-            _ => Ok(self.scoring.team[1].cumulative_bags()),
+            _ => Ok(self.scoring.team[team_id].cumulative_bags()),
         }
     }
 
@@ -475,7 +439,6 @@ impl Game {
             let card_result = self.execute_play_card(rotation_status, card);
             Some(card_result)
         } else {
-            println!("not in correct state to play card: {:?}", self.state);
             None
         }
     }
@@ -501,10 +464,6 @@ impl Game {
     }
 
     fn execute_play_card(&mut self, rotation_status: usize, card: Card) -> PlayCardResult {
-        println!(
-            "with current_player_index of {}, player at rotation #{} played {}",
-            self.current_player_index, rotation_status, card
-        );
         if card.suit == Suit::Spade {
             self.spades_broken = true;
         }
@@ -515,16 +474,13 @@ impl Game {
             let winner = self
                 .scoring
                 .trick((self.current_player_index + 1) % 4, &self.current_trick);
-            println!("the trick winner was #{}", winner);
             self.current_trick.clear();
             self.leading_suit = None;
             if self.scoring.is_over() {
-                println!("scoring is over; game complete");
                 self.state = State::GameCompleted;
                 return PlayCardResult::GameCompleted;
             }
             if self.scoring.is_in_betting_stage() {
-                println!("got to end of round, back to betting stage");
                 self.current_player_index = 0;
                 self.spades_broken = false;
                 self.bets_placed = [Bet::Amount(0); 4];
@@ -533,19 +489,11 @@ impl Game {
             } else {
                 self.current_player_index = winner; // the trick winner will lead on the next trick
                 self.state = State::Trick((rotation_status + 1) % 4); // NOTE: Why not current_player_index?
-                println!(
-                    "so now cpi = {}, state={:?}",
-                    self.current_player_index, self.state
-                );
             }
             PlayCardResult::TrickCompleted
         } else {
             self.current_player_index = (self.current_player_index + 1) % 4;
             self.state = State::Trick((rotation_status + 1) % 4); // NOTE: Why not current_player_index?
-            println!(
-                "so now cpi = {}, state={:?}",
-                self.current_player_index, self.state
-            );
             PlayCardResult::CardPlayed
         }
     }
@@ -556,9 +504,7 @@ impl Game {
         card: Card,
         hand: &[Card],
     ) -> Option<SpadesError> {
-        println!("can_play_card_from_hand: {} {} {:?}", rotation_status, card, hand);
         if !hand.contains(&card) {
-            println!("card isn't in hand");
             return Some(SpadesError::CardNotInHand);
         }
         let leading_suit = self.leading_suit;
@@ -567,14 +513,12 @@ impl Game {
             if card.suit == Suit::Spade {
                 if self.spades_broken || !hand.iter().any(|c| c.suit != Suit::Spade) {
                 } else {
-                    println!("can't play that spade now");
                     return Some(SpadesError::CardIncorrectSuit);
                 }
             }
         }
         if self.leading_suit != Some(card.suit) && hand.iter().any(|x| Some(x.suit) == leading_suit)
         {
-            println!("need to follow suit");
             return Some(SpadesError::CardIncorrectSuit);
         }
         None
@@ -939,32 +883,32 @@ mod game_tests {
         let g = Game::default();
         assert_eq!(
             Err(SpadesError::GameNotStarted),
-            g.team_a_individual_round_bags()
+            g.team_individual_round_bags(0)
         );
         assert_eq!(
             Err(SpadesError::GameNotStarted),
-            g.team_a_individual_round_score()
+            g.team_individual_round_score(0)
         );
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_all_rounds_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_all_rounds_bags(0));
         assert_eq!(
             Err(SpadesError::GameNotStarted),
-            g.team_a_all_rounds_score()
+            g.team_all_rounds_score(0)
         );
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_a_tricks());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_tricks_won(0));
         assert_eq!(
             Err(SpadesError::GameNotStarted),
-            g.team_b_individual_round_bags()
+            g.team_individual_round_bags(1)
         );
         assert_eq!(
             Err(SpadesError::GameNotStarted),
-            g.team_b_individual_round_score()
+            g.team_individual_round_score(1)
         );
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_all_rounds_bags());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_all_rounds_bags(1));
         assert_eq!(
             Err(SpadesError::GameNotStarted),
-            g.team_b_all_rounds_score()
+            g.team_all_rounds_score(1)
         );
-        assert_eq!(Err(SpadesError::GameNotStarted), g.team_b_tricks());
+        assert_eq!(Err(SpadesError::GameNotStarted), g.team_tricks_won(1));
     }
 
     #[test]
