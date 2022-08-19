@@ -1,5 +1,6 @@
 use cards::{get_trick_winner, Card};
 use std::fmt;
+use std::ops::Add;
 
 /// Used as an argument to [Game::place_bet](struct.Game.html#method.place_bet).
 #[derive(
@@ -23,6 +24,22 @@ impl From<u8> for Bet {
             Bet::Nil
         } else {
             Bet::Amount(f)
+        }
+    }
+}
+
+impl Add for Bet {
+    type Output = u8;
+    fn add(self, rhs: Self) -> u8 {
+        match self {
+            Bet::Amount(x) => { match rhs {
+                Bet::Amount(y) => x + y,
+                _ => x
+            }}
+            _ => { match rhs {
+                Bet::Amount(y) => y,
+                _ => 0
+            }}
         }
     }
 }
@@ -294,6 +311,18 @@ impl Scoring {
 mod tests {
     use super::Bet;
     use super::{PlayerState, Scoring, TeamState};
+
+    #[test]
+    fn test_add_bets() {
+        let bet3 = Bet::Amount(3);
+        let bet13 = Bet::Amount(13);
+        let betnil = Bet::Nil;
+        let betblindnil = Bet::BlindNil;
+        assert_eq!(3, bet3 + betnil);
+        assert_eq!(3, bet3 + betblindnil);
+        assert_eq!(0, betnil + betnil);
+        assert_eq!(16, bet3 + bet13);
+    }
 
     #[test]
     fn test_playerstate_new() {
