@@ -1,7 +1,7 @@
 [package]
 name = "spades"
-version = "1.0.0"
-authors = ["William <limwilliam23@gmail.com>"]
+version = "2.0.0"
+authors = ["William <limwilliam23@gmail.com>", "targrub@gmail.com"]
 repository = "https://github.com/wlim33/rust-spades"
 categories = ["games", "game-engines", "simulation"]
 keywords = ["spades", "cards", "state", "machine"]
@@ -14,4 +14,5 @@ travis-ci = { repository = "wlim33/rust-spades", branch = "master" }
 
 [dependencies]
 rand = "0.5"
-uuid = { version = "0.6", features = ["v4"] }
+serde = { version = "1.0", features = [ "derive" ], optional = false }
+serde_test = { version = "1.0" }
