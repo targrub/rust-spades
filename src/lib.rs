@@ -464,7 +464,7 @@ impl Game {
     }
 
     fn execute_play_card(&mut self, rotation_status: usize, card: Card) -> PlayCardResult {
-        if card.suit == Suit::Spade {
+        if card.suit == Suit::Spades {
             self.spades_broken = true;
         }
 
@@ -510,8 +510,8 @@ impl Game {
         let leading_suit = self.leading_suit;
         if rotation_status == 0 {
             // to lead spades, spades must be broken OR only have spades in this hand
-            if card.suit == Suit::Spade {
-                if self.spades_broken || !hand.iter().any(|c| c.suit != Suit::Spade) {
+            if card.suit == Suit::Spades {
+                if self.spades_broken || !hand.iter().any(|c| c.suit != Suit::Spades) {
                 } else {
                     return Some(SpadesError::CardIncorrectSuit);
                 }
@@ -565,19 +565,19 @@ mod game_tests {
         let g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
         let c3c = Card {
             rank: Rank::Three,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let c4c = Card {
             rank: Rank::Four,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let qs = Card {
             rank: Rank::Queen,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         let aces = Card {
             rank: Rank::Ace,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
 
         // all the reasons cannot play
@@ -588,19 +588,19 @@ mod game_tests {
         let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
         let c3c = Card {
             rank: Rank::Three,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let c4c = Card {
             rank: Rank::Four,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let qs = Card {
             rank: Rank::Queen,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         let aces = Card {
             rank: Rank::Ace,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         g.state = State::Trick(0);
         g.player[0].hand = vec![qs];
@@ -613,19 +613,19 @@ mod game_tests {
         let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
         let c3c = Card {
             rank: Rank::Three,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let c4c = Card {
             rank: Rank::Four,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let qs = Card {
             rank: Rank::Queen,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         let aces = Card {
             rank: Rank::Ace,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
 
         g.state = State::GameNotStarted;
@@ -649,19 +649,19 @@ mod game_tests {
         let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
         let c3c = Card {
             rank: Rank::Three,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let c4c = Card {
             rank: Rank::Four,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let qs = Card {
             rank: Rank::Queen,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         let aces = Card {
             rank: Rank::Ace,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
 
         g.spades_broken = false;
@@ -680,19 +680,19 @@ mod game_tests {
         let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
         let c3c = Card {
             rank: Rank::Three,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let c4c = Card {
             rank: Rank::Four,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let qc = Card {
             rank: Rank::Queen,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let ac = Card {
             rank: Rank::Ace,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
 
         g.current_trick = vec![];
@@ -730,23 +730,23 @@ mod game_tests {
         let g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
         let qc = Card {
             rank: Rank::Queen,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let jd = Card {
             rank: Rank::Jack,
-            suit: Suit::Diamond,
+            suit: Suit::Diamonds,
         };
         let ks = Card {
             rank: Rank::King,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         let js = Card {
             rank: Rank::Jack,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         let ad = Card {
             rank: Rank::Ace,
-            suit: Suit::Diamond,
+            suit: Suit::Diamonds,
         };
         let hand = [qc, jd, ks];
     }
@@ -756,28 +756,28 @@ mod game_tests {
         let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
         let qc = Card {
             rank: Rank::Queen,
-            suit: Suit::Club,
+            suit: Suit::Clubs,
         };
         let jd = Card {
             rank: Rank::Jack,
-            suit: Suit::Diamond,
+            suit: Suit::Diamonds,
         };
         let ks = Card {
             rank: Rank::King,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         let js = Card {
             rank: Rank::Jack,
-            suit: Suit::Spade,
+            suit: Suit::Spades,
         };
         let ad = Card {
             rank: Rank::Ace,
-            suit: Suit::Diamond,
+            suit: Suit::Diamonds,
         };
         let hand = [qc, jd, ks];
 
         // clubs led by another; must follow suit
-        g.leading_suit = Some(Suit::Club);
+        g.leading_suit = Some(Suit::Clubs);
         assert_eq!(None, g.can_play_card_from_hand(1, qc, &hand));
         assert_eq!(
             Some(SpadesError::CardIncorrectSuit),
@@ -789,7 +789,7 @@ mod game_tests {
         );
 
         // can't follow suit; all possible
-        g.leading_suit = Some(Suit::Heart);
+        g.leading_suit = Some(Suit::Hearts);
         assert_eq!(None, g.can_play_card_from_hand(1, qc, &hand));
         assert_eq!(None, g.can_play_card_from_hand(1, jd, &hand));
         assert_eq!(None, g.can_play_card_from_hand(1, ks, &hand));

@@ -9,19 +9,19 @@ use std::fmt::{self, Display};
 #[derive(Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Debug, Hash)]
 pub enum Suit {
     #[default]
-    Club = 0,
-    Diamond = 1,
-    Heart = 2,
-    Spade = 3,
+    Clubs = 0,
+    Diamonds = 1,
+    Hearts = 2,
+    Spades = 3,
 }
 
 impl fmt::Display for Suit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Suit::Club => write!(f, "\u{2663}"),
-            Suit::Diamond => write!(f, "\u{2666}"),
-            Suit::Heart => write!(f, "\u{2665}"),
-            Suit::Spade => write!(f, "\u{2660}"),
+            Suit::Clubs => write!(f, "\u{2663}"),
+            Suit::Diamonds => write!(f, "\u{2666}"),
+            Suit::Hearts => write!(f, "\u{2665}"),
+            Suit::Spades => write!(f, "\u{2660}"),
         }
     }
 }
@@ -29,10 +29,10 @@ impl fmt::Display for Suit {
 impl From<u8> for Suit {
     fn from(f: u8) -> Self {
         match f {
-            0 => Suit::Club,
-            1 => Suit::Diamond,
-            2 => Suit::Heart,
-            3 => Suit::Spade,
+            0 => Suit::Clubs,
+            1 => Suit::Diamonds,
+            2 => Suit::Hearts,
+            3 => Suit::Spades,
             _ => panic!("illegal suit"),
         }
     }
@@ -172,11 +172,11 @@ impl<'de> serde::Deserialize<'de> for Card {
 
 #[test]
 fn test_ser_de() {
-    let mut card = Card::new(Suit::Diamond, Rank::King);
+    let mut card = Card::new(Suit::Diamonds, Rank::King);
     serde_test::assert_tokens(&card, &[serde_test::Token::U8(15 + 13)]);
-    card = Card::new(Suit::Club, Rank::Two);
+    card = Card::new(Suit::Clubs, Rank::Two);
     serde_test::assert_tokens(&card, &[serde_test::Token::U8(0 + 2)]);
-    card = Card::new(Suit::Spade, Rank::Ace);
+    card = Card::new(Suit::Spades, Rank::Ace);
     serde_test::assert_tokens(&card, &[serde_test::Token::U8(15 * 3 + 14)]);
 }
 
@@ -197,7 +197,7 @@ pub fn get_trick_winner(leading_player_index: usize, others: &Vec<Card>) -> usiz
                 best_card = *other;
                 winning_index = i;
             }
-        } else if other.suit == Suit::Spade {
+        } else if other.suit == Suit::Spades {
             best_card = *other;
             winning_index = i;
         }
@@ -222,7 +222,7 @@ pub fn new_deck() -> Vec<Card> {
         Rank::King,
         Rank::Ace,
     ];
-    let suits: Vec<Suit> = vec![Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
+    let suits: Vec<Suit> = vec![Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades];
 
     let mut cards = Vec::new();
     for suit in suits {
@@ -261,11 +261,11 @@ mod suit_tests {
     #[test]
     fn test_from_u8_to_suit() {
         let mut s: Suit = 2u8.into();
-        assert_eq!(Suit::Heart, s);
-        assert_eq!(Suit::Club, 0u8.into());
-        assert_eq!(Suit::Diamond, 1u8.into());
-        assert_eq!(Suit::Heart, 2u8.into());
-        assert_eq!(Suit::Spade, 3u8.into());
+        assert_eq!(Suit::Hearts, s);
+        assert_eq!(Suit::Clubs, 0u8.into());
+        assert_eq!(Suit::Diamonds, 1u8.into());
+        assert_eq!(Suit::Hearts, 2u8.into());
+        assert_eq!(Suit::Spades, 3u8.into());
     }
 
     #[test]
@@ -322,15 +322,15 @@ mod tests {
 
     #[test]
     fn shuffle_changes_cards() {
-        let ah = Card::new(Suit::Heart, Rank::Ace);
-        let ks = Card::new(Suit::Spade, Rank::King);
-        let qc = Card::new(Suit::Club, Rank::Queen);
-        let jd = Card::new(Suit::Diamond, Rank::Jack);
-        let c2d = Card::new(Suit::Diamond, Rank::Two);
-        let c3d = Card::new(Suit::Diamond, Rank::Three);
-        let c4d = Card::new(Suit::Diamond, Rank::Four);
-        let c5d = Card::new(Suit::Diamond, Rank::Five);
-        let c6d = Card::new(Suit::Diamond, Rank::Six); // NOTE! not in cards vec
+        let ah = Card::new(Suit::Hearts, Rank::Ace);
+        let ks = Card::new(Suit::Spades, Rank::King);
+        let qc = Card::new(Suit::Clubs, Rank::Queen);
+        let jd = Card::new(Suit::Diamonds, Rank::Jack);
+        let c2d = Card::new(Suit::Diamonds, Rank::Two);
+        let c3d = Card::new(Suit::Diamonds, Rank::Three);
+        let c4d = Card::new(Suit::Diamonds, Rank::Four);
+        let c5d = Card::new(Suit::Diamonds, Rank::Five);
+        let c6d = Card::new(Suit::Diamonds, Rank::Six); // NOTE! not in cards vec
         let mut cards = [ah, ks, qc, jd, c2d, c3d, c4d, c5d];
         let the_copy = cards;
         let the_clone = cards.clone();
@@ -352,11 +352,11 @@ mod tests {
 
     #[test]
     fn card_to_string() {
-        let ah = Card::new(Suit::Heart, Rank::Ace);
-        let ks = Card::new(Suit::Spade, Rank::King);
-        let qc = Card::new(Suit::Club, Rank::Queen);
-        let jd = Card::new(Suit::Diamond, Rank::Jack);
-        let c2d = Card::new(Suit::Diamond, Rank::Two);
+        let ah = Card::new(Suit::Hearts, Rank::Ace);
+        let ks = Card::new(Suit::Spades, Rank::King);
+        let qc = Card::new(Suit::Clubs, Rank::Queen);
+        let jd = Card::new(Suit::Diamonds, Rank::Jack);
+        let c2d = Card::new(Suit::Diamonds, Rank::Two);
         assert_eq!(ah.to_string(), "A\u{2665}".to_string());
         assert_eq!(ks.to_string(), "K\u{2660}".to_string());
         assert_eq!(qc.to_string(), "Q\u{2663}".to_string());
@@ -367,7 +367,7 @@ mod tests {
     #[test]
     fn deal_4() {
         let ah = Card {
-            suit: Suit::Heart,
+            suit: Suit::Hearts,
             rank: Rank::Ace,
         };
         let ranks = [
@@ -385,7 +385,7 @@ mod tests {
             Rank::King,
             Rank::Ace,
         ];
-        let suits = [Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
+        let suits = [Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades];
         let mut deck = Vec::new();
         for r in ranks {
             for s in suits {
@@ -409,12 +409,12 @@ mod tests {
 
     #[test]
     fn new_deck_test() {
-        let ah = Card::new(Suit::Heart, Rank::Ace);
-        let ks = Card::new(Suit::Spade, Rank::King);
-        let qc = Card::new(Suit::Club, Rank::Queen);
-        let jd = Card::new(Suit::Diamond, Rank::Jack);
-        let c2d = Card::new(Suit::Diamond, Rank::Two);
-        let c3d = Card::new(Suit::Diamond, Rank::Three);
+        let ah = Card::new(Suit::Hearts, Rank::Ace);
+        let ks = Card::new(Suit::Spades, Rank::King);
+        let qc = Card::new(Suit::Clubs, Rank::Queen);
+        let jd = Card::new(Suit::Diamonds, Rank::Jack);
+        let c2d = Card::new(Suit::Diamonds, Rank::Two);
+        let c3d = Card::new(Suit::Diamonds, Rank::Three);
 
         let deck = new_deck();
         assert!(deck.contains(&ah));
@@ -427,13 +427,13 @@ mod tests {
 
     #[test]
     fn test_winner_of_tricks() {
-        let ah = Card::new(Suit::Heart, Rank::Ace);
-        let ks = Card::new(Suit::Spade, Rank::King);
-        let qc = Card::new(Suit::Club, Rank::Queen);
-        let jd = Card::new(Suit::Diamond, Rank::Jack);
-        let c2d = Card::new(Suit::Diamond, Rank::Two);
-        let c3d = Card::new(Suit::Diamond, Rank::Three);
-        let c3s = Card::new(Suit::Spade, Rank::Three);
+        let ah = Card::new(Suit::Hearts, Rank::Ace);
+        let ks = Card::new(Suit::Spades, Rank::King);
+        let qc = Card::new(Suit::Clubs, Rank::Queen);
+        let jd = Card::new(Suit::Diamonds, Rank::Jack);
+        let c2d = Card::new(Suit::Diamonds, Rank::Two);
+        let c3d = Card::new(Suit::Diamonds, Rank::Three);
+        let c3s = Card::new(Suit::Spades, Rank::Three);
 
         let hand1 = vec![c2d, c3d, jd, qc];
         assert_eq!(2, get_trick_winner(0, &hand1));

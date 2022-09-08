@@ -59,12 +59,12 @@ pub fn get_valid_card_index(leading_suit: Option<Suit>, hand: &Vec<Card>) -> usi
             .position(|ref x| Some(x.suit) == leading_suit)
             .unwrap()
     } else {
-        if let Some(card_index) = hand.iter().position(|c| c.suit == Suit::Spade) {
+        if let Some(card_index) = hand.iter().position(|c| c.suit == Suit::Spades) {
             card_index
         } else {
             if let Some(card_index) = hand
                 .iter()
-                .position(|c| c.suit != Suit::Spade && Some(c.suit) != leading_suit)
+                .position(|c| c.suit != Suit::Spades && Some(c.suit) != leading_suit)
             {
                 card_index
             } else {

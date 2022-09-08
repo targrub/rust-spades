@@ -20,19 +20,19 @@ fn deal_deck_four_players() {
 #[test]
 fn trick_winner_same_suit() {
     let a = Card {
-        suit: Suit::Club,
+        suit: Suit::Clubs,
         rank: Rank::Two,
     };
     let b = Card {
-        suit: Suit::Club,
+        suit: Suit::Clubs,
         rank: Rank::Ace,
     };
     let c = Card {
-        suit: Suit::Club,
+        suit: Suit::Clubs,
         rank: Rank::King,
     };
     let d = Card {
-        suit: Suit::Club,
+        suit: Suit::Clubs,
         rank: Rank::Nine,
     };
 
@@ -46,19 +46,19 @@ fn trick_winner_same_suit() {
 #[test]
 fn trick_winner_no_spades() {
     let a = Card {
-        suit: Suit::Diamond,
+        suit: Suit::Diamonds,
         rank: Rank::Two,
     };
     let b = Card {
-        suit: Suit::Heart,
+        suit: Suit::Hearts,
         rank: Rank::Ace,
     };
     let c = Card {
-        suit: Suit::Heart,
+        suit: Suit::Hearts,
         rank: Rank::King,
     };
     let d = Card {
-        suit: Suit::Diamond,
+        suit: Suit::Diamonds,
         rank: Rank::Nine,
     };
 
@@ -73,19 +73,19 @@ fn trick_winner_no_spades() {
 #[test]
 fn trick_winner_spades() {
     let a = Card {
-        suit: Suit::Diamond,
+        suit: Suit::Diamonds,
         rank: Rank::Two,
     };
     let b = Card {
-        suit: Suit::Heart,
+        suit: Suit::Hearts,
         rank: Rank::Ace,
     };
     let c = Card {
-        suit: Suit::Spade,
+        suit: Suit::Spades,
         rank: Rank::Two,
     };
     let d = Card {
-        suit: Suit::Diamond,
+        suit: Suit::Diamonds,
         rank: Rank::Nine,
     };
 
