@@ -10,7 +10,8 @@ fn main() {
     for _r in 0..1000 {
         // rounds
         //println!("round {}", r + 1);
-        let mut g = Game::assign_players(game_id, player_ids);
+        let mut g = Game::default();
+        g.assign_players(game_id, player_ids);
         play_complete_round(&mut g);
         /*
         println!("winners of final game: {:?}", g.get_winner_ids().unwrap());

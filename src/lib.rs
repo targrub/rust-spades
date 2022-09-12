@@ -10,8 +10,9 @@
 //! let game_id = Uid(12345);
 //! let player_ids = [Uid(3456), Uid(3457), Uid(3458), Uid(3459)];
 //!
-//! let mut g = Game::assign_players(game_id, player_ids);
-//!
+//! let mut g = Game::default();
+//! 
+//! g.assign_players(game_id, player_ids);
 //! g.start_game();
 //!
 //! while g.state() != State::GameCompleted {
@@ -178,17 +179,14 @@ impl Default for Game {
 }
 
 impl Game {
-    pub fn assign_players(id: Uid, player_ids: [Uid; 4]) -> Game {
-        Game {
-            id,
-            player: [
+    pub fn assign_players(&mut self, id: Uid, player_ids: [Uid; 4]) {
+        self.id = id;
+        self.player = [
                 Player::new(player_ids[0]),
                 Player::new(player_ids[1]),
                 Player::new(player_ids[2]),
                 Player::new(player_ids[3]),
-            ],
-            ..Default::default()
-        }
+            ];
     }
 
     /// The uuid of the game itself
@@ -826,7 +824,8 @@ mod game_tests {
         let p4_uuid = Uid(13);
         let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
 
-        let g = Game::assign_players(game_uuid, player_uuids);
+        let mut g = Game::default();
+        g.assign_players(game_uuid, player_uuids);
         let cpi = g.current_player_index;
         assert_eq!(0, cpi);
         let curr_trick = g.current_trick;
@@ -910,7 +909,8 @@ mod game_tests {
         let p3_uuid = Uid(12);
         let p4_uuid = Uid(13);
         let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
-        let mut g = Game::assign_players(game_uuid, player_uuids);
+        let mut g = Game::default();
+        g.assign_players(game_uuid, player_uuids);
         let mut cpi_response = g.current_player_id();
         assert_eq!(Err(SpadesError::GameNotStarted), cpi_response);
         g.start_game();
@@ -955,7 +955,8 @@ mod game_tests {
         let p4_uuid = Uid(13);
         let unknown_uuid = Uid(99);
         let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
-        let mut g = Game::assign_players(game_uuid, player_uuids);
+        let mut g = Game::default();
+        g.assign_players(game_uuid, player_uuids);
         g.start_game();
         let p1_hand_result = g.hand_from_player_id(p1_uuid);
         if let Ok(p1_hand) = p1_hand_result {
