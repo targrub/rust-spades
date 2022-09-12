@@ -61,13 +61,13 @@ impl Default for GameConfig {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct PlayerState {
     won_trick: [bool; 13],
 }
 
-impl PlayerState {
-    fn new() -> PlayerState {
+impl Default for PlayerState {
+    fn default() -> Self {
         PlayerState {
             won_trick: [false; 13],
         }
@@ -90,7 +90,7 @@ impl fmt::Display for TeamState {
 }
 
 impl TeamState {
-    fn new() -> TeamState {
+    fn default() -> TeamState {
         TeamState {
             tricks: 0,
             game_bags: 0,
@@ -233,19 +233,6 @@ impl Default for Scoring {
 }
 
 impl Scoring {
-    pub fn new(max_points: i32) -> Scoring {
-        Scoring {
-            team: [TeamState::new(), TeamState::new()],
-            in_betting_stage: true,
-            players: [PlayerState::new(); 4],
-            bets_placed: [Bet::Amount(0); 4],
-            is_over: false,
-            round: 0,
-            trick: 0,
-            config: GameConfig { max_points },
-        }
-    }
-
     pub fn add_bet(&mut self, current_player_index: usize, bet: Bet) {
         self.bets_placed[current_player_index] = bet;
     }
@@ -326,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_playerstate_new() {
-        let ps = PlayerState::new();
+        let ps = PlayerState::default();
         for i in 0..13 {
             assert_eq!(false, ps.won_trick[i]);
         }
@@ -334,30 +321,18 @@ mod tests {
     }
 
     #[test]
-    fn test_scoring_new_with_negative_max() {
-        let sc = Scoring::new(-32);
-        assert_eq!(-32, sc.config.max_points)
-    }
-
-    #[test]
-    fn test_scoring_new_with_max_of_0() {
-        let sc = Scoring::new(0);
-        assert_eq!(0, sc.config.max_points)
-    }
-
-    #[test]
-    fn test_scoring_new_with_positive_max() {
-        let sc = Scoring::new(320);
-        assert_eq!(320, sc.config.max_points)
+    fn test_scoring_max_points_is_500() {
+        let sc = Scoring::default();
+        assert_eq!(500, sc.config.max_points)
     }
 
     #[test]
     fn test_game_end_scoring_zero_overtricks() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Amount(3);
         let second_bet = Bet::Amount(8);
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..11 {
             first_player.won_trick[i] = true;
         }
@@ -371,11 +346,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_zero_overtricks_betnil_succeeds() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Amount(11);
         let second_bet = Bet::Nil;
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..11 {
             first_player.won_trick[i] = true;
         }
@@ -389,11 +364,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_zero_overtricks_betnil_fails() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Nil;
         let second_bet = Bet::Amount(11);
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..11 {
             first_player.won_trick[i] = true;
         }
@@ -407,11 +382,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_one_overtrick() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Amount(3);
         let second_bet = Bet::Amount(8);
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..12 {
             first_player.won_trick[i] = true;
         }
@@ -425,11 +400,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_two_overtricks() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Amount(3);
         let second_bet = Bet::Amount(8);
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..13 {
             first_player.won_trick[i] = true;
         }
@@ -443,11 +418,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_two_overtricks_betnil_succeeds() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Amount(11);
         let second_bet = Bet::Nil;
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..13 {
             first_player.won_trick[i] = true;
         }
@@ -461,11 +436,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_two_overtricks_betnil_fails() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Nil;
         let second_bet = Bet::Amount(11);
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..13 {
             first_player.won_trick[i] = true;
         }
@@ -479,11 +454,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_bet_all_win_all() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Amount(13);
         let second_bet = Bet::Nil;
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..13 {
             first_player.won_trick[i] = true;
         }
@@ -497,11 +472,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_bet_all_fall_short() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Amount(13);
         let second_bet = Bet::Nil;
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..12 {
             first_player.won_trick[i] = true;
         }
@@ -515,11 +490,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_bet_all_wrongly_fall_short() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Nil;
         let second_bet = Bet::Amount(13);
-        let mut first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         for i in 0..12 {
             first_player.won_trick[i] = true;
         }
@@ -533,11 +508,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_bet_all_wrongly_fall_very_short() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Nil;
         let second_bet = Bet::Amount(13);
-        let first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         ts.calculate_round_totals(first_bet, &first_player, second_bet, &second_player);
         assert_eq!(0, ts.game_bags());
         assert_eq!(0, ts.cumulative_bags());
@@ -548,11 +523,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_bet_completely_wrongly_fall_very_short() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Amount(1);
         let second_bet = Bet::Amount(12);
-        let first_player = PlayerState::new();
-        let second_player = PlayerState::new();
+        let first_player = PlayerState::default();
+        let second_player = PlayerState::default();
         ts.calculate_round_totals(first_bet, &first_player, second_bet, &second_player);
         assert_eq!(0, ts.game_bags());
         assert_eq!(0, ts.cumulative_bags());
@@ -563,11 +538,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_complete_betting_fail() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Nil;
         let second_bet = Bet::Nil;
-        let mut first_player = PlayerState::new();
-        let mut second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let mut second_player = PlayerState::default();
         for i in 0..12 {
             first_player.won_trick[i] = true;
         }
@@ -584,11 +559,11 @@ mod tests {
 
     #[test]
     fn test_game_end_scoring_each_bidnil_win_1() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Nil;
         let second_bet = Bet::Nil;
-        let mut first_player = PlayerState::new();
-        let mut second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let mut second_player = PlayerState::default();
         for i in 0..1 {
             first_player.won_trick[i] = true;
         }
@@ -606,11 +581,11 @@ mod tests {
     #[test]
     #[should_panic(expected = "assertion failed: self.tricks <= 13")]
     fn test_game_end_scoring_winning_14_tricks_panics() {
-        let mut ts = TeamState::new();
+        let mut ts = TeamState::default();
         let first_bet = Bet::Nil;
         let second_bet = Bet::Nil;
-        let mut first_player = PlayerState::new();
-        let mut second_player = PlayerState::new();
+        let mut first_player = PlayerState::default();
+        let mut second_player = PlayerState::default();
         for i in 0..13 {
             first_player.won_trick[i] = true;
         }

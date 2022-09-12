@@ -3,12 +3,12 @@ extern crate spades;
 extern crate rand;
 
 use rand::thread_rng;
-use spades::{Bet, Card, Game, State, Suit, Uid};
+use spades::{Bet, Card, Game, State, Suit};
 
 #[test]
 #[allow(unused)]
 fn main() {
-    let mut g = Game::new(Uid(777), [Uid(1000), Uid(2000), Uid(2001), Uid(1999)], 500);
+    let mut g = Game::default();
 
     g.start_game();
     while g.state() != State::GameCompleted {

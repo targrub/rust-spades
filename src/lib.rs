@@ -10,7 +10,7 @@
 //! let game_id = Uid(12345);
 //! let player_ids = [Uid(3456), Uid(3457), Uid(3458), Uid(3459)];
 //!
-//! let mut g = Game::new(game_id, player_ids, 500);
+//! let mut g = Game::assign_players(game_id, player_ids);
 //!
 //! g.start_game();
 //!
@@ -178,24 +178,16 @@ impl Default for Game {
 }
 
 impl Game {
-    pub fn new(id: Uid, player_ids: [Uid; 4], max_points: i32) -> Game {
+    pub fn assign_players(id: Uid, player_ids: [Uid; 4]) -> Game {
         Game {
             id,
-            state: State::GameNotStarted,
-            scoring: Scoring::new(max_points),
-            current_trick: Vec::new(),
-            bets_placed: [Bet::Amount(0); 4],
-            deck: new_deck(),
-            current_player_index: 0,
-            leading_suit: None,
-            spades_broken: false,
-            //rule_blind_nil_allowed: false,
             player: [
                 Player::new(player_ids[0]),
                 Player::new(player_ids[1]),
                 Player::new(player_ids[2]),
                 Player::new(player_ids[3]),
             ],
+            ..Default::default()
         }
     }
 
@@ -562,7 +554,7 @@ mod game_tests {
 
     #[test]
     fn test_play_card_can_or_cannot_play() {
-        let g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
+        let g = Game::default();
         let c3c = Card {
             rank: Rank::Three,
             suit: Suit::Clubs,
@@ -585,7 +577,7 @@ mod game_tests {
 
     #[test]
     fn test_play_card_regular_play() {
-        let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
+        let mut g = Game::default();
         let c3c = Card {
             rank: Rank::Three,
             suit: Suit::Clubs,
@@ -610,7 +602,7 @@ mod game_tests {
 
     #[test]
     fn test_play_card_not_suitable_state() {
-        let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
+        let mut g = Game::default();
         let c3c = Card {
             rank: Rank::Three,
             suit: Suit::Clubs,
@@ -646,7 +638,7 @@ mod game_tests {
 
     #[test]
     fn test_execute_play_card_playing_spades_breaks_spades() {
-        let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
+        let mut g = Game::default();
         let c3c = Card {
             rank: Rank::Three,
             suit: Suit::Clubs,
@@ -677,7 +669,7 @@ mod game_tests {
 
     #[test]
     fn test_execute_play_card_played_card_added_to_trick_cards() {
-        let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
+        let mut g = Game::default();
         let c3c = Card {
             rank: Rank::Three,
             suit: Suit::Clubs,
@@ -727,7 +719,7 @@ mod game_tests {
 
     #[test]
     fn test_execute_play_card_handle_regular_card() {
-        let g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
+        let g = Game::default();
         let qc = Card {
             rank: Rank::Queen,
             suit: Suit::Clubs,
@@ -753,7 +745,7 @@ mod game_tests {
 
     #[test]
     fn test_can_play_card_from_hand() {
-        let mut g = Game::new(Uid(0), [Uid(1), Uid(2), Uid(3), Uid(4)], 500);
+        let mut g = Game::default();
         let qc = Card {
             rank: Rank::Queen,
             suit: Suit::Clubs,
@@ -833,9 +825,8 @@ mod game_tests {
         let p3_uuid = Uid(12);
         let p4_uuid = Uid(13);
         let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
-        let max_points: i32 = -1;
 
-        let g = Game::new(game_uuid, player_uuids, max_points);
+        let g = Game::assign_players(game_uuid, player_uuids);
         let cpi = g.current_player_index;
         assert_eq!(0, cpi);
         let curr_trick = g.current_trick;
@@ -919,7 +910,7 @@ mod game_tests {
         let p3_uuid = Uid(12);
         let p4_uuid = Uid(13);
         let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
-        let mut g = Game::new(game_uuid, player_uuids, 500);
+        let mut g = Game::assign_players(game_uuid, player_uuids);
         let mut cpi_response = g.current_player_id();
         assert_eq!(Err(SpadesError::GameNotStarted), cpi_response);
         g.start_game();
@@ -964,7 +955,7 @@ mod game_tests {
         let p4_uuid = Uid(13);
         let unknown_uuid = Uid(99);
         let player_uuids = [p1_uuid, p2_uuid, p3_uuid, p4_uuid];
-        let mut g = Game::new(game_uuid, player_uuids, 500);
+        let mut g = Game::assign_players(game_uuid, player_uuids);
         g.start_game();
         let p1_hand_result = g.hand_from_player_id(p1_uuid);
         if let Ok(p1_hand) = p1_hand_result {
